@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use division_ecs::{Entity, Registry};
+    use division_ecs::{Entity, Registry, EntityRequestError};
 
     #[test]
     fn create_not_panics() {
@@ -16,6 +16,32 @@ mod tests {
         assert_eq!(e1, Entity { id: 0, version: 1 });
         assert_eq!(e2, Entity { id: 1, version: 1 });
         assert_ne!(e1.id, e2.id);
+    }
+
+    #[test]
+    fn try_destroy_entity_when_already_destroyed_returns_error() {
+        let mut reg = Registry::new();
+        let e1 = reg.create_entity();
+
+        assert!(reg.try_destroy_entity(e1).is_ok());
+        assert_eq!(
+            reg.try_destroy_entity(e1).err().unwrap(),
+            EntityRequestError::DeadEntity
+        );
+
+        reg.create_entity();
+        assert_eq!(
+            reg.try_destroy_entity(e1).err().unwrap(),
+            EntityRequestError::DeadEntity
+        );
+    }
+
+    #[test]
+    fn try_destroy_entity_with_invalid_id_returns_error() {
+        let mut reg = Registry::new();
+        let e = Entity { id: 100, version: 0 };
+
+        assert_eq!(reg.try_destroy_entity(e).err().unwrap(), EntityRequestError::InvalidId);
     }
 
     #[test]

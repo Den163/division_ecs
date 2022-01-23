@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use crate::Entity;
+use crate::errors::EntityRequestError;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct InternalEntity {
     _exist: bool,
     _version: u32
@@ -15,11 +16,6 @@ impl Default for InternalEntity {
 pub struct Registry {
     _component_id_to_ptr: HashMap<usize, usize>,
     _entities: Vec<InternalEntity>
-}
-
-pub enum EntityRequestError {
-    InvalidId,
-    DeadEntity
 }
 
 impl Registry {
@@ -49,7 +45,7 @@ impl Registry {
 
     pub fn try_destroy_entity(&mut self, entity: Entity) -> Result<(), EntityRequestError> {
         let id = entity.id as usize;
-        if id < self._entities.len() { return Err(EntityRequestError::InvalidId); }
+        if id >= self._entities.len() { return Err(EntityRequestError::InvalidId); }
 
         let e = self._entities[id];
         if !e._exist || entity.version != e._version {
