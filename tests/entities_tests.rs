@@ -69,11 +69,11 @@ mod tests {
     #[test]
     fn is_alive_true_after_creation_false_after_destruction() {
         let mut reg = Registry::new();
-        let e = reg.create_entity();
 
+        let e = reg.create_entity();
         assert!(reg.is_alive(e));
 
         reg.destroy_entity(e);
-        assert!(!reg.is_alive(e));
+        assert!(reg.is_alive(e) == false);
     }
 }

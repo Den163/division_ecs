@@ -1,18 +1,18 @@
 use crate::{Entity, mem_utils};
 
 #[derive(Debug)]
-pub struct EntitiesContainer  {
+pub(crate) struct EntitiesContainer  {
+    gap_ids: Vec<u32>,
     capacity: usize,
     entity_to_version: *mut u32,
-    entity_to_is_alive: *mut bool,
-    gap_ids: Vec<u32>,
-    next_free_id: u32
+    entity_to_is_alive: *mut u32,
+    next_free_id: u32,
 }
 
 impl EntitiesContainer {
     pub fn new(capacity: usize) -> EntitiesContainer {
         let entity_to_version = mem_utils::alloc_zeroed(capacity);
-        let entity_to_is_alive = mem_utils::alloc_zeroed(capacity);
+        let entity_to_is_alive = mem_utils::alloc_zeroed(get_bit_vec_size_for_capacity(capacity));
         let gap_ids = Vec::new();
 
         EntitiesContainer { capacity, entity_to_version, entity_to_is_alive, gap_ids, next_free_id: 0 }
@@ -28,7 +28,7 @@ impl EntitiesContainer {
         }
 
         let entity_to_version = mem_utils::alloc_zeroed(new_capacity);
-        let entity_to_is_alive = mem_utils::alloc_zeroed(new_capacity);
+        let entity_to_is_alive = mem_utils::alloc_zeroed(get_bit_vec_size_for_capacity(new_capacity));
 
         unsafe {
             self.entity_to_version.copy_to(entity_to_version, self.capacity);
@@ -60,8 +60,8 @@ impl EntitiesContainer {
 
         let usid = id as usize;
         let version ;
-        unsafe { 
-            *self.entity_to_is_alive.add(usid) = true;
+        unsafe {
+            self.toggle_alive(id);
             let version_ptr = self.entity_to_version.add(usid);
 
             version = *version_ptr + 1;
@@ -75,12 +75,8 @@ impl EntitiesContainer {
         self.validate_entity_version_with_panic(entity);
 
         let id = entity.id;
-        unsafe {
-            let alive_ptr = self.entity_to_is_alive.add(id as usize);
-            debug_assert!(*alive_ptr == true, "Entity is already dead");
-
-            *alive_ptr = false;
-        }
+        debug_assert!(self.is_alive(entity), "Entity is already dead");
+        self.toggle_alive(id);
 
         if id == self.next_free_id - 1 {
             self.next_free_id = id;
@@ -92,9 +88,24 @@ impl EntitiesContainer {
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.validate_id_with_panic(entity.id);
 
+        let mask_index = entity.id / 32;
+        let mask_bit = entity.id % 32;
+        let alive_mask = 1 >> mask_bit;
+
         unsafe {
             self.validate_entity_version(entity) &
-            *self.entity_to_is_alive.add(entity.id as usize)
+            ((*self.entity_to_is_alive.add(mask_index as usize) & alive_mask) == alive_mask)
+        }
+    }
+
+    fn toggle_alive(&self, id: u32) {
+        let mask_index = id / 32;
+        let mask_bit = id as u32 % 32;
+        let alive_mask = 1 >> mask_bit;
+
+        unsafe {
+            let mask_ptr = self.entity_to_is_alive.add(mask_index as usize);
+            *mask_ptr ^= alive_mask;
         }
     }
 
@@ -126,4 +137,8 @@ impl Drop for EntitiesContainer {
         mem_utils::dealloc(self.entity_to_is_alive, self.capacity);
         mem_utils::dealloc(self.entity_to_version, self.capacity);
     }
+}
+
+fn get_bit_vec_size_for_capacity(capacity: usize) -> usize {
+    (capacity as f64 / 32.).ceil() as usize
 }
