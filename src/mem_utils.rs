@@ -3,7 +3,13 @@ use crate::mem_utils;
 
 pub fn alloc<T>(capacity: usize) -> *mut T {
     unsafe {
-        return std::alloc::alloc(  mem_utils::layout_of::<T>(capacity)) as *mut T;
+        std::alloc::alloc(mem_utils::layout_of::<T>(capacity)) as *mut T
+    }
+}
+
+pub fn alloc_zeroed<T>(capacity: usize) -> *mut T {
+    unsafe {
+        std::alloc::alloc_zeroed(self::layout_of::<T>(capacity)) as *mut T
     }
 }
 

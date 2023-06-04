@@ -1,34 +1,44 @@
 use crate::{EntitiesContainer, Entity};
-use crate::errors::EntityRequestError;
+
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
 
 #[derive(Debug)]
 pub struct Registry {
-    _entities_container: EntitiesContainer
+    entities_container: EntitiesContainer
 }
 
 impl Registry {
     pub fn new() -> Registry {
         Registry {
-            _entities_container: EntitiesContainer::new(ENTITIES_DEFAULT_CAPACITY)
+            entities_container: EntitiesContainer::new(ENTITIES_DEFAULT_CAPACITY)
         }
     }
 
+    pub fn with_capacity(capacity: usize) -> Registry {
+        Registry { 
+            entities_container: EntitiesContainer::new(capacity) 
+        }
+    }
+
+    #[inline(always)]
+    pub fn entities_capacity(&self) -> usize {
+        self.entities_container.capacity()
+    }
+
+    #[inline(always)]
     pub fn create_entity(&mut self) -> Entity {
-        self._entities_container.create_entity()
+        self.entities_container.create_entity()
     }
 
-    pub fn try_destroy_entity(&mut self, entity: Entity) -> Result<(), EntityRequestError> {
-        self._entities_container.try_destroy_entity(entity)
-    }
-
+    #[inline(always)]
     pub fn destroy_entity(&mut self, entity: Entity) {
-        self._entities_container.destroy_entity(entity)
+        self.entities_container.destroy_entity(entity)
     }
 
+    #[inline(always)]
     pub fn is_alive(&self, entity: Entity) -> bool {
-        self._entities_container.is_alive(entity)
+        self.entities_container.is_alive(entity)
     }
 }
 
