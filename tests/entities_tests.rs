@@ -76,4 +76,19 @@ mod tests {
         reg.destroy_entity(e);
         assert!(reg.is_alive(e) == false);
     }
+
+    #[test]
+    fn destroy_will_not_affect_other_entities() {
+        let mut reg = Registry::new();
+        let e = reg.create_entity();
+        assert!(reg.is_alive(e));
+
+        let entity_to_check = reg.create_entity();
+        assert!(reg.is_alive(e));
+        assert!(reg.is_alive(entity_to_check));
+
+        reg.destroy_entity(e);
+        assert!(reg.is_alive(e) == false);
+        assert!(reg.is_alive(entity_to_check));
+    }
 }
