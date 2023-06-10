@@ -1,26 +1,28 @@
-use crate::{archetype_data_page::ArchetypeDataPage, component_type::ComponentType, mem_utils};
+use crate::{archetype_data_page::ArchetypeDataPage, mem_utils, archetype::{Archetype}};
 
-pub(crate) struct ArchetypeDataLayout {
-    component_offsets: *mut usize,
-    component_count: usize,
+pub struct ArchetypeDataLayout {
+    component_offsets_ptr: *mut usize,
     entities_capacity: usize
 }
 
 impl ArchetypeDataLayout {
-    pub fn new(components: &[ComponentType]) -> Self {
-        let component_count = components.len();
+    pub fn new(archetype: &Archetype) -> Self {
+        let component_count = archetype.component_count();
 
-        let max_align = components.iter()
+        let ptr_size = std::mem::size_of::<usize>();
+        let max_align = archetype.components_iter()
             .map(|c| { c.align() })
             .max().unwrap();
+        let max_align = max_align % ptr_size;
+
         let bytes_per_components_row_approx = ArchetypeDataPage::PAGE_SIZE_BYTES / component_count - max_align;
-        let entities_capacity = components.iter()
+        let entities_capacity = archetype.components_iter()
             .map(|c| bytes_per_components_row_approx / c.size())
-            .max().unwrap();
+            .min().unwrap();
 
         let component_offsets: *mut usize = mem_utils::alloc(component_count);
         let mut offset = 0;
-        for (i, ct) in components.iter().enumerate() {
+        for (i, ct) in archetype.components_iter().enumerate() {
             let align_offset = offset % ct.align();
 
             if align_offset != 0 {
@@ -36,9 +38,18 @@ impl ArchetypeDataLayout {
         debug_assert!(offset < ArchetypeDataPage::PAGE_SIZE_BYTES);
 
         ArchetypeDataLayout {
-            component_offsets,
-            component_count,
+            component_offsets_ptr: component_offsets,
             entities_capacity
         }
+    }
+
+    #[inline(always)]
+    pub fn component_offsets(&self) -> *const usize {
+        self.component_offsets_ptr
+    }
+
+    #[inline(always)]
+    pub fn entities_capacity(&self) -> usize {
+        self.entities_capacity
     }
 }

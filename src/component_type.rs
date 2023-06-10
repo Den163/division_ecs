@@ -16,6 +16,10 @@ impl ComponentType {
         }
     }
 
+    pub(crate) fn new(id: TypeId, size: usize, align: usize) -> ComponentType {
+        ComponentType { id, size, align }
+    }
+
     #[inline(always)]
     pub fn id(&self) -> TypeId {
         self.id
