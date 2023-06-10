@@ -11,12 +11,9 @@ pub struct Archetype {
 }
 
 impl Archetype {
-    pub(crate) fn new(components: &[ComponentType]) -> Self {
+    pub(crate) fn new(components: &mut [ComponentType]) -> Self {
         let component_count = components.len();
         debug_assert!(component_count > 0);
-
-        let mut component_types = components.to_vec();
-        component_types.sort_by_key(|c| { c.id() });
         
         let ids: *mut TypeId = mem_utils::alloc(component_count);
         let sizes: *mut usize = mem_utils::alloc(component_count);
@@ -63,5 +60,66 @@ impl Archetype {
     #[inline(always)]
     pub fn component_count(&self) -> usize { 
         self.component_count
+    }
+
+    pub fn is_same_as(&self, other: &Self) -> bool {
+        if self.component_count != other.component_count {
+            return false;
+        }
+
+        for i in 0..self.component_count {
+            let is_different_id = unsafe { *self.ids.add(i) != *other.ids.add(i) };
+            if is_different_id  {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    pub fn is_extends(&self, other: &Self) -> bool {
+        if self.component_count < other.component_count {
+            return false;
+        }
+
+        let (self_ids, other_ids) = unsafe {(
+            std::slice::from_raw_parts(self.ids, self.component_count),
+            std::slice::from_raw_parts(other.ids, other.component_count)
+        )};
+
+        let mut left_idx = 0;
+        for id in other_ids {
+            let result  = self_ids[left_idx..].binary_search(id);
+            match result {
+                Ok(found_idx) => {
+                    left_idx = found_idx + 1;
+                    continue 
+                },
+                Err(_) => return false,
+            }
+        }
+
+        return true;
+    }
+}
+
+impl Clone for Archetype {
+    fn clone(&self) -> Self {
+        let component_count = self.component_count;
+        let ids = mem_utils::alloc(component_count);
+        let sizes = mem_utils::alloc(component_count);
+        let aligns = mem_utils::alloc(component_count);
+        unsafe {
+            self.ids.copy_to(ids, component_count);
+            self.sizes.copy_to(sizes, component_count);
+            self.aligns.copy_to(aligns, component_count);
+        }
+
+        Self { 
+            ids,
+            sizes,
+            aligns, 
+            component_count
+        }
     }
 }

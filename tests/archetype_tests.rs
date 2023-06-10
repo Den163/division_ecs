@@ -80,3 +80,38 @@ fn archetype_data_page_set_value_panics_if_entity_index_out_of_capacity() {
 
     page.set_component_value::<u64>(layout.entities_capacity(), &archetype, &layout, 0);
 }
+
+#[test]
+fn archetype_is_same_as_true_only_with_same_set_of_types() {
+    let a1 = ArchetypeBuilder::new()
+        .component::<TestType1>()
+        .component::<TestType2>()
+        .build();
+
+    let a2 = a1.clone();
+
+    assert!(a1.is_same_as(&a2));
+
+    let a3 = ArchetypeBuilder::new()
+        .component::<TestType1>()
+        .component::<TestType3>()
+        .build();
+
+    assert!(a1.is_same_as(&a3) == false);
+}
+
+#[test]
+fn archetype_extends_as_expected() {
+    let arch_to_extend = ArchetypeBuilder::new()
+        .component::<TestType3>()
+        .component::<u64>()
+        .build();
+
+    let arch = ArchetypeBuilder::new()
+        .component::<TestType1>()
+        .component::<TestType2>()
+        .extend_archetype(&arch_to_extend)
+        .build();
+
+    assert!(arch.is_extends(&arch_to_extend));
+}

@@ -35,3 +35,9 @@ impl ComponentType {
         self.align
     }
 }
+
+impl PartialEq for ComponentType {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
