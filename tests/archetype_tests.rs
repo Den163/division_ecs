@@ -31,15 +31,27 @@ fn archetype_data_page_set_value_as_expected() {
 
     let layout = ArchetypeDataLayout::new(&archetype);
     let mut page = ArchetypeDataPage::new();
-    let expected_value_u64 = 13;
-    let expected_value_u128 = 7;
-    let entity_index = 0;
+    let entities_capacity = layout.entities_capacity();
 
-    page.set_component_value::<u64>(entity_index, &archetype, &layout, expected_value_u64);
-    page.set_component_value::<u128>(entity_index, &archetype, &layout, expected_value_u128);
+    assert!(entities_capacity > 0);
 
-    assert_eq!(expected_value_u64, *page.get_component_value::<u64>(entity_index, &archetype, &layout));
-    assert_eq!(expected_value_u128, *page.get_component_value::<u128>(entity_index, &archetype, &layout));
+    let u64_values: Vec<u64> = (0..entities_capacity)
+        .map(|v| { v as u64 })
+        .collect();
+
+    let u128_values: Vec<u128> = (0..entities_capacity)
+        .map(|v| { (entities_capacity + v) as u128 })
+        .collect();
+
+    for i in 0..entities_capacity {
+        page.set_component_value::<u64>(i, &archetype, &layout, u64_values[i]);
+        page.set_component_value::<u128>(i, &archetype, &layout, u128_values[i]);
+    }
+
+    for i in 0..entities_capacity {
+        assert_eq!(u64_values[i], *page.get_component_value::<u64>(i, &archetype, &layout));
+        assert_eq!(u128_values[i], *page.get_component_value::<u128>(i, &archetype, &layout));
+    }
 }
 
 #[test]
