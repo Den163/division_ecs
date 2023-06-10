@@ -1,23 +1,23 @@
-use crate::{EntitiesContainer, Entity};
+use crate::{EntitiesContainer, Entity, archetype::Archetype};
 
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
 
 #[derive(Debug)]
 pub struct Registry {
-    entities_container: EntitiesContainer
+    entities_container: EntitiesContainer,
+    archetypes: Vec<Archetype>,
 }
 
 impl Registry {
     pub fn new() -> Registry {
-        Registry {
-            entities_container: EntitiesContainer::new(ENTITIES_DEFAULT_CAPACITY)
-        }
+        Self::with_capacity(ENTITIES_DEFAULT_CAPACITY)
     }
 
     pub fn with_capacity(capacity: usize) -> Registry {
         Registry { 
-            entities_container: EntitiesContainer::new(capacity) 
+            entities_container: EntitiesContainer::new(capacity),
+            archetypes: Vec::new()
         }
     }
 

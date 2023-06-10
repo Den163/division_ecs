@@ -13,6 +13,12 @@ pub fn alloc_zeroed<T>(capacity: usize) -> *mut T {
     }
 }
 
+pub fn realloc<T>(ptr: *mut T, old_capacity: usize, new_capacity: usize) -> *mut T {
+    unsafe {
+        std::alloc::realloc(ptr as *mut u8, mem_utils::layout_of::<T>(old_capacity), new_capacity) as *mut T
+    }
+}
+
 pub fn dealloc<T>(ptr: *mut T, capacity: usize) {
     unsafe {
         std::alloc::dealloc(ptr as *mut u8, mem_utils::layout_of::<T>(capacity))
