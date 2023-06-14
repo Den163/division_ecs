@@ -1,7 +1,7 @@
 use crate::{component_type::ComponentType, mem_utils, archetype_data_layout::ArchetypeDataLayout, archetype::Archetype};
 
 #[derive(Debug)]
-pub struct ArchetypeDataPage {
+pub(crate) struct ArchetypeDataPage {
     entities_ids: Vec<u32>,
     entities_layout_capacity: usize,
 

@@ -1,7 +1,7 @@
 use crate::{archetype_data_page::ArchetypeDataPage, mem_utils, archetype::{Archetype}};
 
 #[derive(Debug)]
-pub struct ArchetypeDataLayout {
+pub(crate) struct ArchetypeDataLayout {
     component_offsets_ptr: *mut usize,
     component_count: usize,
     entities_capacity: usize

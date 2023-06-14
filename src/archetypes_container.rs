@@ -1,7 +1,6 @@
 use crate::{
-    archetype::Archetype, 
-    archetype_data_layout::ArchetypeDataLayout,
-    archetype_data_page::ArchetypeDataPage,
+    archetype::Archetype, archetype_data_layout::ArchetypeDataLayout,
+    archetype_data_page::ArchetypeDataPage, entity_in_archetype::EntityInArchetype,
 };
 
 #[derive(Debug)]
@@ -15,16 +14,9 @@ pub(crate) struct ArchetypesContainer {
     free_pages: Vec<usize>,
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct EntityInArchetype {
-    pub archetype_index: usize,
-    pub page_index: usize,
-}
-
-
 #[derive(Debug)]
 struct ArchetypePages {
-    pages: Vec<usize> 
+    pages: Vec<usize>,
 }
 
 impl ArchetypesContainer {
@@ -41,8 +33,7 @@ impl ArchetypesContainer {
             .map(|_| ArchetypeDataPage::new())
             .collect();
 
-        let free_pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
-            .collect();
+        let free_pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
 
         ArchetypesContainer {
             archetypes,
@@ -51,7 +42,7 @@ impl ArchetypesContainer {
             pages,
 
             free_archetypes,
-            free_pages
+            free_pages,
         }
     }
 
@@ -65,14 +56,20 @@ impl ArchetypesContainer {
             if page.has_free_space() {
                 page.push_entity_id(entity_id);
 
-                return EntityInArchetype { archetype_index, page_index }
+                return EntityInArchetype {
+                    archetype_index,
+                    page_index,
+                };
             }
-        };
+        }
 
         let page_index = self.reserve_page_for_archetype(archetype_index);
         self.pages[page_index].push_entity_id(entity_id);
 
-        EntityInArchetype { archetype_index, page_index }
+        EntityInArchetype {
+            archetype_index,
+            page_index,
+        }
     }
 
     pub fn remove_entity(&mut self, entity_id: u32, entity_in_archetype: EntityInArchetype) {
@@ -82,7 +79,9 @@ impl ArchetypesContainer {
     }
 
     pub fn get_component_ref<'a, T: 'static>(
-        &'a self, entity_id: u32, entity_in_archetype: EntityInArchetype
+        &'a self,
+        entity_id: u32,
+        entity_in_archetype: EntityInArchetype,
     ) -> &T {
         let page = &self.pages[entity_in_archetype.page_index];
         let archetype = &self.archetypes[entity_in_archetype.archetype_index];
@@ -92,7 +91,9 @@ impl ArchetypesContainer {
     }
 
     pub fn get_component_ref_mut<'a, T: 'static>(
-        &'a mut self, entity_id: u32, entity_in_archetype: EntityInArchetype
+        &'a mut self,
+        entity_id: u32,
+        entity_in_archetype: EntityInArchetype,
     ) -> &'a mut T {
         let page = &mut self.pages[entity_in_archetype.page_index];
         let archetype = &self.archetypes[entity_in_archetype.archetype_index];
@@ -114,15 +115,17 @@ impl ArchetypesContainer {
                 self.archetypes[free_idx] = archetype.clone();
 
                 free_idx
-            },
+            }
             None => {
                 let new_size = self.archetypes.len() + 1;
-                self.archetype_layouts.resize_with(new_size, || { ArchetypeDataLayout::new(&archetype) });
-                self.archetypes.resize_with(new_size, || { archetype.clone() });
-                self.archetype_to_pages.resize_with(new_size, || { ArchetypePages { pages: Vec::new() } });
+                self.archetype_layouts
+                    .resize_with(new_size, || ArchetypeDataLayout::new(&archetype));
+                self.archetypes.resize_with(new_size, || archetype.clone());
+                self.archetype_to_pages
+                    .resize_with(new_size, || ArchetypePages { pages: Vec::new() });
 
                 new_size - 1
-            },
+            }
         }
     }
 
@@ -139,7 +142,9 @@ impl ArchetypesContainer {
         let layout = &self.archetype_layouts[archetype_index];
         self.pages[page_index].set_layout(layout);
 
-        self.archetype_to_pages[archetype_index].pages.push(page_index);
+        self.archetype_to_pages[archetype_index]
+            .pages
+            .push(page_index);
         page_index
     }
 }

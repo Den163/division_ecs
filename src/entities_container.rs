@@ -1,4 +1,4 @@
-use crate::{archetypes_container::EntityInArchetype, mem_utils::{self}, Entity};
+use crate::{entity_in_archetype::EntityInArchetype, mem_utils, Entity};
 
 #[derive(Debug)]
 pub(crate) struct EntitiesContainer {
@@ -41,15 +41,24 @@ impl EntitiesContainer {
         let alive_new_capacity = get_bit_vec_size_for_capacity(new_capacity);
 
         self.entity_to_version = mem_utils::realloc_with_uninit_capacity_zeroing(
-            self.entity_to_version, old_capacity, new_capacity);
+            self.entity_to_version,
+            old_capacity,
+            new_capacity,
+        );
         self.entity_to_archetype = mem_utils::realloc_with_uninit_capacity_zeroing(
-            self.entity_to_archetype, old_capacity, new_capacity);
+            self.entity_to_archetype,
+            old_capacity,
+            new_capacity,
+        );
 
         if alive_old_capacity != alive_new_capacity {
             self.entity_to_is_alive = mem_utils::realloc_with_uninit_capacity_zeroing(
-                self.entity_to_is_alive, alive_old_capacity, alive_new_capacity);
+                self.entity_to_is_alive,
+                alive_old_capacity,
+                alive_new_capacity,
+            );
         }
-        
+
         self.capacity = new_capacity;
     }
 
@@ -77,7 +86,6 @@ impl EntitiesContainer {
             version = *version_ptr + 1;
             *version_ptr = version;
         }
-
 
         Entity { id, version }
     }
@@ -112,9 +120,7 @@ impl EntitiesContainer {
     #[inline(always)]
     pub fn get_entity_in_archetype(&self, id: u32) -> EntityInArchetype {
         self.validate_id_with_panic(id);
-        unsafe {
-            *self.entity_to_archetype.add(id as usize)
-        }
+        unsafe { *self.entity_to_archetype.add(id as usize) }
     }
 
     #[inline(always)]
@@ -164,7 +170,10 @@ impl EntitiesContainer {
 
 impl Drop for EntitiesContainer {
     fn drop(&mut self) {
-        mem_utils::dealloc(self.entity_to_is_alive, get_bit_vec_size_for_capacity(self.capacity));
+        mem_utils::dealloc(
+            self.entity_to_is_alive,
+            get_bit_vec_size_for_capacity(self.capacity),
+        );
         mem_utils::dealloc(self.entity_to_version, self.capacity);
         mem_utils::dealloc(self.entity_to_archetype, self.capacity);
     }
