@@ -47,14 +47,13 @@ impl Archetype {
     }
 
     pub(crate) fn find_component_index(&self, type_id: TypeId) -> Option<usize> {
-        for i in 0..self.component_count {
-            let id = unsafe { *self.ids.add(i) };
-            if id == type_id {
-                return Some(i);
+        unsafe {
+            let slice = & *std::ptr::slice_from_raw_parts(self.ids, self.component_count);
+            match slice.binary_search(&type_id) {
+                Ok(idx) => Some(idx),
+                Err(_) => None
             }
         }
-
-        return None;
     }
 
     #[inline(always)]
