@@ -1,13 +1,13 @@
-use std::{any::TypeId};
+use std::{any::TypeId, hash::{Hash, Hasher}};
 
 use crate::{component_type::{ComponentType}, mem_utils};
 
 #[derive(Debug)]
 pub struct Archetype {
-    ids: *const TypeId,
-    sizes: *const usize,
-    aligns: *const usize,
-    component_count: usize
+    ids: *mut TypeId,
+    sizes: *mut usize,
+    aligns: *mut usize,
+    component_count: usize,
 }
 
 impl Archetype {
@@ -110,9 +110,9 @@ impl Clone for Archetype {
         let sizes = mem_utils::alloc(component_count);
         let aligns = mem_utils::alloc(component_count);
         unsafe {
-            self.ids.copy_to(ids, component_count);
-            self.sizes.copy_to(sizes, component_count);
-            self.aligns.copy_to(aligns, component_count);
+            self.ids.copy_to_nonoverlapping(ids, component_count);
+            self.sizes.copy_to_nonoverlapping(sizes, component_count);
+            self.aligns.copy_to_nonoverlapping(aligns, component_count);
         }
 
         Self { 
@@ -121,5 +121,25 @@ impl Clone for Archetype {
             aligns, 
             component_count
         }
+    }
+}
+
+impl Hash for Archetype {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for i in 0..self.component_count {
+            let id = unsafe {
+                *self.ids.add(i)
+            };
+            
+            id.hash(state);
+        }
+    }
+}
+
+impl Drop for Archetype {
+    fn drop(&mut self) {
+        mem_utils::dealloc(self.ids, self.component_count);
+        mem_utils::dealloc(self.sizes, self.component_count);
+        mem_utils::dealloc(self.aligns, self.component_count);
     }
 }

@@ -1,7 +1,9 @@
 use crate::{archetype_data_page::ArchetypeDataPage, mem_utils, archetype::{Archetype}};
 
+#[derive(Debug)]
 pub struct ArchetypeDataLayout {
     component_offsets_ptr: *mut usize,
+    component_count: usize,
     entities_capacity: usize
 }
 
@@ -39,6 +41,7 @@ impl ArchetypeDataLayout {
 
         ArchetypeDataLayout {
             component_offsets_ptr: component_offsets,
+            component_count,
             entities_capacity
         }
     }
@@ -51,5 +54,11 @@ impl ArchetypeDataLayout {
     #[inline(always)]
     pub fn entities_capacity(&self) -> usize {
         self.entities_capacity
+    }
+}
+
+impl Drop for ArchetypeDataLayout {
+    fn drop(&mut self) {
+        mem_utils::dealloc(self.component_offsets_ptr, self.component_count);
     }
 }

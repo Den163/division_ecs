@@ -1,12 +1,14 @@
-use crate::{EntitiesContainer, Entity, archetype::Archetype};
-
+use crate::{
+    archetype::Archetype, archetype_data_page::ArchetypeDataPage,
+    archetypes_container::ArchetypesContainer, EntitiesContainer, Entity,
+};
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
 
 #[derive(Debug)]
 pub struct Registry {
     entities_container: EntitiesContainer,
-    archetypes: Vec<Archetype>,
+    archetypes_container: ArchetypesContainer,
 }
 
 impl Registry {
@@ -15,10 +17,14 @@ impl Registry {
     }
 
     pub fn with_capacity(capacity: usize) -> Registry {
-        Registry { 
+        Registry {
             entities_container: EntitiesContainer::new(capacity),
-            archetypes: Vec::new()
+            archetypes_container: ArchetypesContainer::new(),
         }
+    }
+
+    pub const fn data_page_size() -> usize {
+        ArchetypeDataPage::PAGE_SIZE_BYTES
     }
 
     #[inline(always)]
@@ -27,12 +33,20 @@ impl Registry {
     }
 
     #[inline(always)]
-    pub fn create_entity(&mut self) -> Entity {
-        self.entities_container.create_entity()
+    pub fn create_entity(&mut self, archetype: &Archetype) -> Entity {
+        let entity = self.entities_container.create_entity();
+        let entity_in_arch = self.archetypes_container.add_entity(entity.id, archetype);
+        self.entities_container
+            .set_entity_in_archetype(entity.id, entity_in_arch);
+
+        entity
     }
 
     #[inline(always)]
     pub fn destroy_entity(&mut self, entity: Entity) {
+        let entity_in_arch = self.entities_container.get_entity_in_archetype(entity.id);
+        self.archetypes_container
+            .remove_entity(entity.id, entity_in_arch);
         self.entities_container.destroy_entity(entity)
     }
 
@@ -40,5 +54,20 @@ impl Registry {
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.entities_container.is_alive(entity)
     }
-}
 
+    #[inline(always)]
+    pub fn get_component_ref<T: 'static>(&self, entity: Entity) -> &T {
+        debug_assert!(self.is_alive(entity));
+
+        self.archetypes_container.get_component_ref(
+            entity.id, self.entities_container.get_entity_in_archetype(entity.id))
+    }
+
+    #[inline(always)]
+    pub fn get_component_ref_mut<T: 'static>(&mut self, entity: Entity) -> &mut T {
+        debug_assert!(self.is_alive(entity));
+
+        self.archetypes_container.get_component_ref_mut(
+            entity.id, self.entities_container.get_entity_in_archetype(entity.id))
+    }
+}
