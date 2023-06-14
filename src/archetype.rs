@@ -46,7 +46,7 @@ impl Archetype {
         }})
     }
 
-    pub(crate) fn find_component_index(&self, type_id: TypeId) -> Option<usize> {
+    pub fn find_component_index(&self, type_id: TypeId) -> Option<usize> {
         unsafe {
             let slice = & *std::ptr::slice_from_raw_parts(self.ids, self.component_count);
             match slice.binary_search(&type_id) {

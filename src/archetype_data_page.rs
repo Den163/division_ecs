@@ -51,57 +51,61 @@ impl ArchetypeDataPage {
         self.entities_ids.remove(index);
     }
 
-
-    pub fn get_component_ref<'a, T: 'static>(
+    pub fn get_component_by_entity_id_ref<'a, T: 'static>(
         &'a self, id: u32, archetype: &Archetype, layout: &ArchetypeDataLayout
     ) -> &T {
-        let (component_index, component_size) = Self::get_component_index_and_size::<T>(archetype);
-        let ptr = self.get_component_data_ptr(
-            self.get_entity_index(id), component_index, component_size, layout) as *mut T;
-        unsafe { 
+        let component_index = Self::get_valid_component_index::<T>(archetype);
+        self.get_indexed_component_ref(
+            component_index, self.get_entity_index(id), layout)
+    }
+
+    pub fn get_component_by_entity_id_ref_mut<'a, T: 'static>(
+        &'a mut self, id: u32, archetype: &Archetype, layout: &ArchetypeDataLayout
+    ) -> &'a mut T {
+        let component_index = Self::get_valid_component_index::<T>(archetype);
+        self.get_indexed_component_ref_mut(
+            component_index, self.get_entity_index(id), layout)
+    }
+
+    pub fn get_indexed_component_ref<'a, T: 'static>(
+        &'a self, component_index: usize, entity_index: usize, layout: &ArchetypeDataLayout
+    ) -> &'a T {
+        let ptr = self.get_component_data_ptr(entity_index, component_index, layout);
+        unsafe {
             & *ptr
         }
     }
 
-    pub fn get_component_ref_mut<'a, T: 'static>(
-        &'a mut self, id: u32, archetype: &Archetype, layout: &ArchetypeDataLayout
+    pub fn get_indexed_component_ref_mut<'a, T: 'static>(
+        &'a mut self, component_index: usize, entity_index: usize, layout: &ArchetypeDataLayout
     ) -> &'a mut T {
-        let (component_index, component_size) = Self::get_component_index_and_size::<T>(archetype);
-        let ptr = self.get_component_data_ptr(
-            self.get_entity_index(id), component_index, component_size, layout) as *mut T;
+        let ptr = self.get_component_data_ptr(entity_index, component_index, layout);
         unsafe {
             &mut *ptr
         }
     }
 
-    fn get_component_index_and_size<T: 'static>(archetype: &Archetype) -> (usize, usize) {
+    fn get_valid_component_index<T: 'static>(archetype: &Archetype) -> usize {
         let component_index = archetype.find_component_index(std::any::TypeId::of::<T>());
         debug_assert!(
             component_index.is_some(), 
             "There is no component {} in the given archetype", std::any::type_name::<T>()
         );
 
-        let component_index = unsafe { component_index.unwrap_unchecked() };
-        (component_index, std::mem::size_of::<T>())
+        unsafe { component_index.unwrap_unchecked() }
     }
 
-    fn get_component_data_ptr(
-        &self, entity_index: usize, component_index: usize, component_size: usize, layout: &ArchetypeDataLayout
-    ) -> *mut u8 {
+    #[inline(always)]
+    fn get_component_data_ptr<T: 'static>(
+        &self, entity_index: usize, component_index: usize, layout: &ArchetypeDataLayout
+    ) -> *mut T {
         unsafe {
-            let component_data_row_ptr = self.get_component_data_row_ptr(component_index, layout);
-            let entity_offset = entity_index * component_size;
-
-            component_data_row_ptr.add(entity_offset)
-        }
-    }
-
-    fn get_component_data_row_ptr(
-        &self, component_index: usize, layout: &ArchetypeDataLayout
-    ) -> *mut u8 {
-        unsafe {
+            let ref this = self;
             let component_buffer_offset = *layout.component_offsets().add(component_index);
-            self.components_data_ptr.add(component_buffer_offset)
+            let component_data_row_ptr = this.components_data_ptr.add(component_buffer_offset);
+            let entity_offset = entity_index * std::mem::size_of::<T>();
+
+            component_data_row_ptr.add(entity_offset) as *mut T
         }
     }
 

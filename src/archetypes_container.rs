@@ -87,7 +87,7 @@ impl ArchetypesContainer {
         let archetype = &self.archetypes[entity_in_archetype.archetype_index];
         let layout = &self.archetype_layouts[entity_in_archetype.archetype_index];
 
-        page.get_component_ref(entity_id, archetype, layout)
+        page.get_component_by_entity_id_ref(entity_id, archetype, layout)
     }
 
     pub fn get_component_ref_mut<'a, T: 'static>(
@@ -99,7 +99,7 @@ impl ArchetypesContainer {
         let archetype = &self.archetypes[entity_in_archetype.archetype_index];
         let layout = &self.archetype_layouts[entity_in_archetype.archetype_index];
 
-        page.get_component_ref_mut(entity_id, archetype, layout)
+        page.get_component_by_entity_id_ref_mut(entity_id, archetype, layout)
     }
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
