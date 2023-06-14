@@ -11,6 +11,7 @@ fn archetype_has_component_when_it_build_with_it() {
         .component::<TestType3>()
         .build();
 
+    assert_eq!(archetype.component_count(), 2);
     assert!(archetype.has_component::<TestType1>());
     assert!(archetype.has_component::<TestType2>() == false);
     assert!(archetype.has_component::<TestType3>());
@@ -49,4 +50,10 @@ fn archetype_extends_as_expected() {
         .build();
 
     assert!(arch.is_extends(&arch_to_extend));
+
+    let not_extended_archetype = ArchetypeBuilder::new()
+        .component::<f32>()
+        .build();
+
+    assert!(arch.is_extends(&not_extended_archetype) == false);
 }
