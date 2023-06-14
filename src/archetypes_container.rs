@@ -83,11 +83,10 @@ impl ArchetypesContainer {
         entity_id: u32,
         entity_in_archetype: EntityInArchetype,
     ) -> &T {
+        let component_offset = self.get_valid_component_offset::<T>(entity_in_archetype.archetype_index);
         let page = &self.pages[entity_in_archetype.page_index];
-        let archetype = &self.archetypes[entity_in_archetype.archetype_index];
-        let layout = &self.archetype_layouts[entity_in_archetype.archetype_index];
 
-        page.get_component_by_entity_id_ref(entity_id, archetype, layout)
+        page.get_component_ref(component_offset, page.get_entity_index(entity_id))
     }
 
     pub fn get_component_ref_mut<'a, T: 'static>(
@@ -95,12 +94,46 @@ impl ArchetypesContainer {
         entity_id: u32,
         entity_in_archetype: EntityInArchetype,
     ) -> &'a mut T {
+        let component_offset = self.get_valid_component_offset::<T>(entity_in_archetype.archetype_index);
         let page = &mut self.pages[entity_in_archetype.page_index];
-        let archetype = &self.archetypes[entity_in_archetype.archetype_index];
-        let layout = &self.archetype_layouts[entity_in_archetype.archetype_index];
 
-        page.get_component_by_entity_id_ref_mut(entity_id, archetype, layout)
+        page.get_component_ref_mut(component_offset, page.get_entity_index(entity_id))
     }
+
+    pub fn get_valid_component_offset<T: 'static>(&self, archetype_index: usize) -> usize {
+        let archetype = &self.archetypes[archetype_index];
+        let layout = &self.archetype_layouts[archetype_index];
+
+        let component_index = archetype.find_component_index(std::any::TypeId::of::<T>());
+        debug_assert!(
+            component_index.is_some(), 
+            "There is no component {} in the given archetype", std::any::type_name::<T>()
+        );
+
+        unsafe {
+            let component_index = component_index.unwrap_unchecked();
+            *layout.component_offsets().add(component_index)
+        }
+    }
+
+    pub fn get_include_archetypes(&self, archetype: &Archetype) -> Vec<usize> {
+        self.archetypes.iter().enumerate()
+            .filter(|(i, arch)| { archetype.is_include(arch) })
+            .map(|(i, _)| { i })
+            .collect()
+    }
+
+    pub fn get_indexed_component_ref<'a, T: 'static>(
+        &'a self, page_index: usize, component_offset: usize, entity_index: usize
+    ) -> &'a T {
+        self.pages[page_index].get_component_ref(component_offset, entity_index)
+    }
+
+    pub fn get_indexed_component_ref_mut<'a, T: 'static>(
+        &'a mut self, page_index: usize, component_offset: usize, entity_index: usize
+    ) -> &'a T {
+        self.pages[page_index].get_component_ref_mut(component_offset, entity_index)
+    } 
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
         for (i, arch) in self.archetypes.iter().enumerate() {

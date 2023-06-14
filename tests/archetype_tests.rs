@@ -37,7 +37,7 @@ fn archetype_is_same_as_true_only_with_same_set_of_types() {
 }
 
 #[test]
-fn archetype_extends_as_expected() {
+fn archetype_include_as_expected() {
     let arch_to_extend = ArchetypeBuilder::new()
         .component::<TestType3>()
         .component::<u64>()
@@ -46,14 +46,14 @@ fn archetype_extends_as_expected() {
     let arch = ArchetypeBuilder::new()
         .component::<TestType1>()
         .component::<TestType2>()
-        .extend_archetype(&arch_to_extend)
+        .include_archetype(&arch_to_extend)
         .build();
 
-    assert!(arch.is_extends(&arch_to_extend));
+    assert!(arch.is_include(&arch_to_extend));
 
     let not_extended_archetype = ArchetypeBuilder::new()
         .component::<f32>()
         .build();
 
-    assert!(arch.is_extends(&not_extended_archetype) == false);
+    assert!(arch.is_include(&not_extended_archetype) == false);
 }

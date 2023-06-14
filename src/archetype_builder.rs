@@ -18,7 +18,7 @@ impl ArchetypeBuilder {
         self
     }
 
-    pub fn extend_archetype(mut self, archetype: &Archetype) -> Self {
+    pub fn include_archetype(mut self, archetype: &Archetype) -> Self {
         self.component_types.reserve(self.component_types.capacity() + archetype.component_count());
 
         for comp in archetype.components_iter() {

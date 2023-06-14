@@ -76,7 +76,7 @@ impl Archetype {
         return true;
     }
 
-    pub fn is_extends(&self, other: &Self) -> bool {
+    pub fn is_include(&self, other: &Self) -> bool {
         if self.component_count < other.component_count {
             return false;
         }
