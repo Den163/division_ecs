@@ -59,34 +59,16 @@ impl ArchetypeDataPage {
         }
     }
 
-    pub fn get_component_ref<'a, T: 'static>(
-        &'a self, component_offset: usize, entity_index: usize
-    ) -> &'a T {
-        let ptr = self.get_component_data_ptr(entity_index, component_offset);
-        unsafe {
-            & *ptr
-        }
-    }
-
-    pub fn get_component_ref_mut<'a, T: 'static>(
-        &'a mut self, component_offset: usize, entity_index: usize
-    ) -> &'a mut T {
-        let ptr = self.get_component_data_ptr(entity_index, component_offset);
-        unsafe {
-            &mut *ptr
-        }
-    }
-
     #[inline(always)]
-    fn get_component_data_ptr<T: 'static>(
-        &self, entity_index: usize, component_offset: usize
-    ) -> *mut T {
+    pub fn get_component_data_ptr(
+        &self, entity_index: usize, component_offset: usize, type_size: usize
+    ) -> *mut u8 {
         unsafe {
             let ref this = self;
             let component_data_row_ptr = this.components_data_ptr.add(component_offset);
-            let entity_offset = entity_index * std::mem::size_of::<T>();
+            let entity_offset = entity_index * type_size;
 
-            component_data_row_ptr.add(entity_offset) as *mut T
+            component_data_row_ptr.add(entity_offset)
         }
     }
 }

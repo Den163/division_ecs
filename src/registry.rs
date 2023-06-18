@@ -59,7 +59,7 @@ impl Registry {
     pub fn get_component_ref<T: 'static>(&self, entity: Entity) -> &T {
         debug_assert!(self.is_alive(entity));
 
-        self.archetypes_container.get_component_ref(
+        self.archetypes_container.get_component_ref_by_entity_id(
             entity.id, self.entities_container.get_entity_in_archetype(entity.id))
     }
 
@@ -67,7 +67,7 @@ impl Registry {
     pub fn get_component_ref_mut<T: 'static>(&mut self, entity: Entity) -> &mut T {
         debug_assert!(self.is_alive(entity));
 
-        self.archetypes_container.get_component_ref_mut(
+        self.archetypes_container.get_component_ref_mut_by_entity_id(
             entity.id, self.entities_container.get_entity_in_archetype(entity.id))
     }
 }
