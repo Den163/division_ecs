@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
-
     use crate::{Registry, ArchetypeBuilder, ComponentType, component_types};
 
     #[derive(Debug, PartialEq, Clone, Copy)]

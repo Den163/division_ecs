@@ -1,6 +1,10 @@
 use crate::{
-    archetype::Archetype, archetype_data_page::ArchetypeDataPage,
-    archetypes_container::ArchetypesContainer, EntitiesContainer, Entity,
+    archetype::Archetype, 
+    archetype_data_page::ArchetypeDataPage,
+    archetype_data_page_view::ArchetypeDataPageView, 
+    archetypes_container::ArchetypesContainer,
+    EntitiesContainer, 
+    Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -56,23 +60,31 @@ impl Registry {
     }
 
     #[inline(always)]
-    pub fn get_component_ref<T: 'static>(&self, entity: Entity) -> &T {
+    pub fn get_component_ref<'a, T: 'static>(&'a self, entity: Entity) -> &'a T {
         assert!(self.is_alive(entity));
 
-        self.archetypes_container.get_component_ref_by_entity_id(
-            entity.id,
-            self.entities_container.get_entity_in_archetype(entity.id),
-        )
+        let page_view = self.get_page_view(entity);
+        let entity_index = page_view.page.get_entity_index_by_id(entity.id);
+        let ptr = page_view.get_component_ptr(entity_index);
+
+        unsafe { &*ptr }
     }
 
     #[inline(always)]
-    pub fn get_component_ref_mut<T: 'static>(&mut self, entity: Entity) -> &mut T {
+    pub fn get_component_ref_mut<'a, T: 'static>(&'a mut self, entity: Entity) -> &'a mut T {
         assert!(self.is_alive(entity));
 
-        self.archetypes_container
-            .get_component_ref_mut_by_entity_id(
-                entity.id,
-                self.entities_container.get_entity_in_archetype(entity.id),
-            )
+        let page_view = self.get_page_view(entity);
+        let entity_index = page_view.page.get_entity_index_by_id(entity.id);
+        let ptr = page_view.get_component_ptr_mut(entity_index);
+
+        unsafe { &mut *ptr }
+    }
+
+    #[inline(always)]
+    fn get_page_view<'a>(&self, entity: Entity) -> ArchetypeDataPageView {
+        self.archetypes_container.get_page_view(
+            self.entities_container.get_entity_in_archetype(entity.id).page_index,
+        )
     }
 }

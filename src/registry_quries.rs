@@ -1,9 +1,9 @@
 use std::{marker::PhantomData, any::TypeId};
 
-use crate::{Registry, Entity};
+use crate::{Registry, Entity, archetype_data_page_view::ArchetypeDataPageView};
 
 pub struct EntitiesReadQuery<'a, T0: 'static, T1: 'static> {
-    suitable_pages_indices_buffer: Vec<usize>,
+    page_views: Vec<ArchetypeDataPageView<'a>>,
     registry: &'a Registry,
     _types: (PhantomData<T0>, PhantomData<T1>)
 }
@@ -19,7 +19,7 @@ pub struct EntitiesReadQueryIter<'a, T0: 'static, T1: 'static> {
 impl Registry {
     pub fn read_query<'a, T0: 'static, T1: 'static>(&'a self) -> EntitiesReadQuery<'a, T0, T1> {
         EntitiesReadQuery {
-            suitable_pages_indices_buffer: Vec::new(),
+            page_views: Vec::new(),
             registry: self,
             _types: (PhantomData::default(), PhantomData::default())
         }
@@ -30,7 +30,7 @@ impl<'a, T0: 'static, T1: 'static> Iterator for EntitiesReadQueryIter<'a, T0, T1
     type Item = (Entity, &'a T0, &'a T1);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let suitable_pages = &self.read_query.suitable_pages_indices_buffer;
+        let suitable_pages = &self.read_query.page_views;
         let last_entity_index = self.entity_ids.len() as isize - 1;
 
         if (self.current_suitable_page_index < 0) | 
@@ -43,11 +43,12 @@ impl<'a, T0: 'static, T1: 'static> Iterator for EntitiesReadQueryIter<'a, T0, T1
                 return None;
             }
 
-            let page_index = suitable_pages[self.current_suitable_page_index as usize];
-            let archetype_container = &self.read_query.registry.archetypes_container;
-            self.slices_buffer = archetype_container.get_components_slices::<T0, T1>(page_index);
-            self.entity_ids = archetype_container.get_page_entity_ids_slice(
-                page_index);
+            let page_view = &suitable_pages[self.current_suitable_page_index as usize];
+            self.slices_buffer = (
+                page_view.get_component_slice(),
+                page_view.get_component_slice()
+            );
+            self.entity_ids = page_view.page.entities_ids();
         }
 
         self.current_entity_index += 1;
@@ -70,10 +71,10 @@ impl<'a, T0: 'static, T1: 'static> IntoIterator for &'a mut EntitiesReadQuery<'a
     fn into_iter(self) -> Self::IntoIter {
         let include_types = [ TypeId::of::<T0>(), TypeId::of::<T1>(), ];
         let suitable_indices_iter = self.registry.archetypes_container
-            .get_suitable_page_indices(&include_types);
+            .get_suitable_page_views(&include_types);
 
-        self.suitable_pages_indices_buffer.clear();
-        self.suitable_pages_indices_buffer.extend(suitable_indices_iter);
+        self.page_views.clear();
+        self.page_views.extend(suitable_indices_iter);
 
         EntitiesReadQueryIter {
             entity_ids: &[],

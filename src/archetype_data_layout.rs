@@ -1,4 +1,4 @@
-use crate::{archetype_data_page::ArchetypeDataPage, mem_utils, archetype::{Archetype}};
+use crate::{archetype_data_page::ArchetypeDataPage, mem_utils, archetype::Archetype};
 
 #[derive(Debug)]
 pub(crate) struct ArchetypeDataLayout {
