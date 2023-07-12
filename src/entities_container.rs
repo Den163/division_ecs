@@ -94,7 +94,7 @@ impl EntitiesContainer {
         self.validate_entity_version_with_panic(entity);
 
         let id = entity.id;
-        debug_assert!(self.is_alive(entity), "Entity is already dead");
+        assert!(self.is_alive(entity), "Entity is already dead");
         self.toggle_alive(id);
 
         if id == self.next_free_id - 1 {
@@ -121,6 +121,14 @@ impl EntitiesContainer {
     pub fn get_entity_in_archetype(&self, id: u32) -> EntityInArchetype {
         self.validate_id_with_panic(id);
         unsafe { *self.entity_to_archetype.add(id as usize) }
+    }
+
+    #[inline(always)]
+    pub(crate) fn get_entity_by_id(&self, entity_id: u32) -> Entity {
+        Entity {
+            version: unsafe { *self.entity_to_version.add(entity_id as usize) },
+            id: entity_id
+        }
     }
 
     #[inline(always)]
@@ -154,14 +162,14 @@ impl EntitiesContainer {
 
     fn validate_entity_version_with_panic(&self, entity: Entity) {
         self.validate_id_with_panic(entity.id);
-        debug_assert!(
+        assert!(
             self.validate_entity_version(entity),
             "Invalid entity version (It's dead)"
         );
     }
 
     fn validate_id_with_panic(&self, id: u32) {
-        debug_assert!(
+        assert!(
             self.validate_id(id),
             "Invalid entity id (Maybe it's from another world)"
         );

@@ -10,9 +10,22 @@ impl ArchetypeBuilder {
     }
 
     pub fn component<T: 'static>(mut self) -> Self {
-        let component_type = ComponentType::of::<T>();
-        if !self.component_types.contains(&component_type) {
-            self.component_types.push(component_type);
+        self = self.component_type(ComponentType::of::<T>());
+
+        self
+    }
+
+    pub fn component_types(mut self, components: &[ComponentType]) -> Self {
+        for comp in components {
+            self = self.component_type(*comp)
+        }
+
+        self
+    }
+
+    pub fn component_type(mut self, component: ComponentType) -> Self {
+        if !self.component_types.contains(&component) {
+            self.component_types.push(component);
         }
 
         self

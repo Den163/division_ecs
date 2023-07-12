@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, any::TypeId};
 
 use crate::{
     archetype::Archetype, archetype_data_layout::ArchetypeDataLayout,
@@ -10,7 +10,9 @@ pub(crate) struct ArchetypesContainer {
     archetypes: Vec<Archetype>,
     archetype_to_pages: Vec<ArchetypePages>,
     archetype_layouts: Vec<ArchetypeDataLayout>,
+
     pages: Vec<ArchetypeDataPage>,
+    page_to_archetype: Vec<isize>,
 
     free_archetypes: Vec<usize>,
     free_pages: Vec<usize>,
@@ -29,19 +31,25 @@ impl ArchetypesContainer {
         let archetypes = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
         let archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
         let archetype_layouts = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
-        let free_archetypes = Vec::new();
 
         let pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
             .map(|_| ArchetypeDataPage::new())
             .collect();
 
+        let page_to_archetype = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
+            .map(|_| -1)
+            .collect();
+
+        let free_archetypes = Vec::new();
         let free_pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
 
         ArchetypesContainer {
             archetypes,
             archetype_to_pages,
             archetype_layouts,
+
             pages,
+            page_to_archetype,
 
             free_archetypes,
             free_pages,
@@ -85,11 +93,12 @@ impl ArchetypesContainer {
         entity_id: u32,
         entity_in_archetype: EntityInArchetype,
     ) -> &T {
-        let component_offset = self.get_valid_component_offset::<T>(entity_in_archetype.archetype_index);
+        let component_offset =
+            self.get_valid_component_offset::<T>(entity_in_archetype.archetype_index);
         let page = &self.pages[entity_in_archetype.page_index];
 
         unsafe {
-            & *get_component_data_ptr(page, page.get_entity_index(entity_id), component_offset)
+            &*get_component_data_ptr_mut(page, page.get_entity_index_by_id(entity_id), component_offset)
         }
     }
 
@@ -98,28 +107,67 @@ impl ArchetypesContainer {
         entity_id: u32,
         entity_in_archetype: EntityInArchetype,
     ) -> &'a mut T {
-        let component_offset = self.get_valid_component_offset::<T>(entity_in_archetype.archetype_index);
+        let component_offset =
+            self.get_valid_component_offset::<T>(entity_in_archetype.archetype_index);
         let page = &self.pages[entity_in_archetype.page_index];
 
         unsafe {
-            &mut *get_component_data_ptr(page, page.get_entity_index(entity_id), component_offset)
+            &mut *get_component_data_ptr_mut(page, page.get_entity_index_by_id(entity_id), component_offset)
         }
     }
 
-    pub fn get_valid_component_offset<T: 'static>(&self, archetype_index: usize) -> usize {
+    pub(crate) fn get_valid_component_offset<T: 'static>(&self, archetype_index: usize) -> usize {
         let archetype = &self.archetypes[archetype_index];
         let layout = &self.archetype_layouts[archetype_index];
 
         let component_index = archetype.find_component_index(std::any::TypeId::of::<T>());
-        debug_assert!(
-            component_index.is_some(), 
-            "There is no component {} in the given archetype", std::any::type_name::<T>()
+        assert!(
+            component_index.is_some(),
+            "There is no component {} in the given archetype",
+            std::any::type_name::<T>()
         );
 
         unsafe {
             let component_index = component_index.unwrap_unchecked();
             *layout.component_offsets().add(component_index)
         }
+    }
+
+    pub(crate) fn get_suitable_page_indices<'a>(
+        &'a self, 
+        include_types: &'a [TypeId]
+    ) -> impl Iterator<Item=usize> + 'a {
+        self.archetypes.iter().enumerate()
+            .filter(|(_, arch)| { arch.is_include_ids(include_types) })
+            .flat_map(|(idx, _)| { 
+                (&self.archetype_to_pages[idx].pages).into_iter().map(|v| *v)
+            })
+    }
+
+    pub(crate) fn get_page_entity_ids_slice<'a>(&'a self, page_index: usize) -> &'a [u32] {
+        &self.pages[page_index].entities_ids()
+    }
+
+    pub(crate) fn get_components_slices<'a, T0: 'static, T1: 'static>(
+        &'a self,
+        page_index: usize
+    ) -> (&'a [T0], &'a [T1]) {
+        let archetype_index = self.page_to_archetype[page_index];
+        assert!(archetype_index >= 0, "There is no pages for the given archetype");
+
+        let archetype_index = archetype_index as usize;
+        let page = &self.pages[page_index];
+        let entities_count = page.entities_count();
+
+        let offsets = (
+            self.get_valid_component_offset::<T0>(archetype_index),
+            self.get_valid_component_offset::<T1>(archetype_index),
+        );
+
+        unsafe{(
+            &*std::ptr::slice_from_raw_parts(get_component_data_ptr(page, 0, offsets.0), entities_count),
+            &*std::ptr::slice_from_raw_parts(get_component_data_ptr(page, 0, offsets.1), entities_count),
+        )}
     }
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
@@ -162,15 +210,27 @@ impl ArchetypesContainer {
         let layout = &self.archetype_layouts[archetype_index];
         self.pages[page_index].set_layout(layout);
 
-        self.archetype_to_pages[archetype_index]
-            .pages
-            .push(page_index);
+        self.archetype_to_pages[archetype_index].pages.push(page_index);
+        self.page_to_archetype[page_index] = archetype_index as isize;
+
         page_index
     }
 }
 
-fn get_component_data_ptr<'a, T: 'static>(page: &ArchetypeDataPage, entity_index: usize, component_offset: usize
+#[inline(always)]
+fn get_component_data_ptr<'a, T: 'static>(
+    page: &ArchetypeDataPage,
+    entity_index: usize,
+    component_offset: usize
+) -> *const T {
+    page.get_component_data_ptr(entity_index, component_offset, size_of::<T>()) as *const T
+}
+
+#[inline(always)]
+fn get_component_data_ptr_mut<'a, T: 'static>(
+    page: &ArchetypeDataPage,
+    entity_index: usize,
+    component_offset: usize,
 ) -> *mut T {
-    page.get_component_data_ptr(entity_index, component_offset, size_of::<T>()) 
-        as *mut T
+    page.get_component_data_ptr_mut(entity_index, component_offset, size_of::<T>()) as *mut T
 }

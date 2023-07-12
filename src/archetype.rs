@@ -1,6 +1,6 @@
 use std::{any::TypeId, hash::{Hash, Hasher}};
 
-use crate::{component_type::{ComponentType}, mem_utils};
+use crate::{component_type::ComponentType, mem_utils};
 
 #[derive(Debug)]
 pub struct Archetype {
@@ -13,7 +13,7 @@ pub struct Archetype {
 impl Archetype {
     pub(crate) fn new(components: &mut [ComponentType]) -> Self {
         let component_count = components.len();
-        debug_assert!(component_count > 0);
+        assert!(component_count > 0);
         
         let ids: *mut TypeId = mem_utils::alloc(component_count);
         let sizes: *mut usize = mem_utils::alloc(component_count);
@@ -76,18 +76,20 @@ impl Archetype {
         return true;
     }
 
+    #[inline(always)]
     pub fn is_include(&self, other: &Self) -> bool {
-        if self.component_count < other.component_count {
+        self.is_include_ids(other.included_ids())
+    }
+
+    pub fn is_include_ids(&self, ids_to_check: &[TypeId]) -> bool {
+        let self_ids = self.included_ids();
+
+        if self_ids.len() < ids_to_check.len() {
             return false;
         }
 
-        let (self_ids, other_ids) = unsafe {(
-            std::slice::from_raw_parts(self.ids, self.component_count),
-            std::slice::from_raw_parts(other.ids, other.component_count)
-        )};
-
         let mut left_idx = 0;
-        for id in other_ids {
+        for id in ids_to_check {
             let result  = self_ids[left_idx..].binary_search(id);
             match result {
                 Ok(found_idx) => {
@@ -99,6 +101,41 @@ impl Archetype {
         }
 
         return true;
+    }
+
+
+    #[inline(always)]
+    pub fn is_exclude(&self, other: &Self) -> bool {
+        self.is_exclude_ids(other.included_ids())
+    }
+
+    pub fn is_exclude_ids(&self, ids_to_check: &[TypeId]) -> bool {
+        let self_ids = self.included_ids();
+
+        let mut left_idx = 0;
+        for id in ids_to_check {
+            let result = self_ids[left_idx..].binary_search(id);
+            match result {
+                Ok(_) => return false,
+                Err(found_idx) => {
+                    if found_idx >= self_ids.len() {
+                        break;
+                    }
+                    else {
+                        left_idx = found_idx;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    #[inline(always)]
+    pub fn included_ids(&self) -> &[TypeId] {
+        unsafe {
+            &*std::ptr::slice_from_raw_parts(self.ids, self.component_count)
+        }
     }
 }
 

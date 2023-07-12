@@ -37,7 +37,7 @@ impl ArchetypeDataLayout {
             offset += ct.size() * entities_capacity;
         }
 
-        debug_assert!(offset < ArchetypeDataPage::PAGE_SIZE_BYTES);
+        assert!(offset <= ArchetypeDataPage::PAGE_SIZE_BYTES);
 
         ArchetypeDataLayout {
             component_offsets_ptr: component_offsets,

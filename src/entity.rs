@@ -14,4 +14,9 @@ impl Entity {
     pub fn version(&self) -> u32 {
         self.version
     }
+
+    #[inline(always)]
+    pub fn null() -> Entity {
+        Entity { id: u32::MAX, version: 0 }
+    }
 }
