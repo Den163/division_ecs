@@ -11,8 +11,9 @@ pub struct EntitiesReadQuery<'a, T0: 'static, T1: 'static> {
 pub struct EntitiesReadQueryIter<'a, T0: 'static, T1: 'static> {
     current_suitable_page_index: isize,
     current_entity_index: isize,
-    read_query: &'a EntitiesReadQuery<'a, T0, T1>,
-    entity_ids: &'a [u32],
+    page_views: &'a [ArchetypeDataPageView<'a>],
+    entities_version: &'a [u32],
+    page_entities_ids: &'a [u32],
     slices_buffer: (&'a [T0], &'a [T1]),
 }
 
@@ -30,8 +31,8 @@ impl<'a, T0: 'static, T1: 'static> Iterator for EntitiesReadQueryIter<'a, T0, T1
     type Item = (Entity, &'a T0, &'a T1);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let suitable_pages = &self.read_query.page_views;
-        let last_entity_index = self.entity_ids.len() as isize - 1;
+        let suitable_pages = &self.page_views;
+        let last_entity_index = self.page_entities_ids.len() as isize - 1;
 
         if (self.current_suitable_page_index < 0) | 
            (self.current_entity_index >= last_entity_index) 
@@ -48,16 +49,19 @@ impl<'a, T0: 'static, T1: 'static> Iterator for EntitiesReadQueryIter<'a, T0, T1
                 page_view.get_component_slice(),
                 page_view.get_component_slice()
             );
-            self.entity_ids = page_view.page.entities_ids();
+            self.page_entities_ids = page_view.page.entities_ids();
         }
 
         self.current_entity_index += 1;
 
         let current_entity_index = self.current_entity_index as usize;
-        let entity_id = self.entity_ids[current_entity_index];
+        let entity_id = self.page_entities_ids[current_entity_index];
 
         return Some((
-            self.read_query.registry.entities_container.get_entity_by_id(entity_id),
+            Entity {
+                id: entity_id,
+                version: self.entities_version[entity_id as usize]
+            },
             &self.slices_buffer.0[current_entity_index],
             &self.slices_buffer.1[current_entity_index],
         ))
@@ -77,9 +81,10 @@ impl<'a, T0: 'static, T1: 'static> IntoIterator for &'a mut EntitiesReadQuery<'a
         self.page_views.extend(suitable_indices_iter);
 
         EntitiesReadQueryIter {
-            entity_ids: &[],
+            page_entities_ids: &[],
             slices_buffer: (&[], &[]),
-            read_query: self,
+            page_views: &self.page_views,
+            entities_version: self.registry.entities_container.get_entity_versions(),
             current_suitable_page_index: -1,
             current_entity_index: -1,
         }

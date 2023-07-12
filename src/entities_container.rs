@@ -132,6 +132,13 @@ impl EntitiesContainer {
     }
 
     #[inline(always)]
+    pub(crate) fn get_entity_versions(&self) -> &[u32] {
+        unsafe {
+            &*std::ptr::slice_from_raw_parts(self.entity_to_version, self.capacity)
+        }
+    }
+
+    #[inline(always)]
     pub fn set_entity_in_archetype(&self, id: u32, entity_in_archetype: EntityInArchetype) {
         self.validate_id_with_panic(id);
         unsafe {
