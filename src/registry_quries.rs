@@ -107,4 +107,5 @@ impl_entities_read_query!(T0, T1, T2, T3, T4);
 impl_entities_read_query!(T0, T1, T2, T3);
 impl_entities_read_query!(T0, T1, T2);
 impl_entities_read_query!(T0, T1);
+impl_entities_read_query!(T0);
 

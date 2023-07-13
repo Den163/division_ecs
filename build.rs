@@ -18,11 +18,11 @@ fn code() -> String {
 
 fn tuple_refs_code_gen() -> String {
     let mut code = String::new();
-    for i in 1..=11 {
+    for i in 0..=11 {
         let types_def = make_types_def_list(i);
-        let tuple_of_refs_def = make_tuple(i, |t| format!("&'a T{}", t));
-        let tuple_of_slices_def = make_tuple(i, |t| format!("&'a [T{}]", t));
-        let tuple_of_index_def = make_tuple(i, |t| format!("&self.{}[index]", t));
+        let tuple_of_refs_def = make_tuple(i, |t| format!("&'a T{},", t));
+        let tuple_of_slices_def = make_tuple(i, |t| format!("&'a [T{}],", t));
+        let tuple_of_index_def = make_tuple(i, |t| format!("&self.{}[index],", t));
 
         let tuple_impl = format!("\
             impl<'a, {types_def}> TupleOfSliceToTupleOfElementRef<{tuple_of_refs_def}> for {tuple_of_slices_def} {{\n\
@@ -50,6 +50,6 @@ fn make_tuple(last_type_index: usize, type_index_to_elem_init: fn(usize) -> Stri
     let tuple = (0..=last_type_index).into_iter()
         .map(type_index_to_elem_init)
         .collect::<Vec<_>>()
-        .join(", ");
+        .join("");
     format!("( {} )", tuple)
 }
