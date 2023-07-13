@@ -1,92 +1,110 @@
-use std::{marker::PhantomData, any::TypeId};
+use std::{any::TypeId, marker::PhantomData};
 
-use crate::{Registry, Entity, archetype_data_page_view::ArchetypeDataPageView};
+use crate::{
+    archetype_data_page_view::ArchetypeDataPageView, Entity, Registry, 
+    TupleOfSliceToTupleOfElementRef
+};
 
-pub struct EntitiesReadQuery<'a, T0: 'static, T1: 'static> {
+pub struct EntitiesReadQuery<'a, T> {
     page_views: Vec<ArchetypeDataPageView<'a>>,
     registry: &'a Registry,
-    _types: (PhantomData<T0>, PhantomData<T1>)
+    t: PhantomData<T>
 }
 
-pub struct EntitiesReadQueryIter<'a, T0: 'static, T1: 'static> {
+pub struct EntitiesReadQueryIter<'a, TResult> {
     current_suitable_page_index: isize,
     current_entity_index: isize,
     page_views: &'a [ArchetypeDataPageView<'a>],
     entities_version: &'a [u32],
     page_entities_ids: &'a [u32],
-    slices_buffer: (&'a [T0], &'a [T1]),
+    slices_buffer: TResult,
 }
 
 impl Registry {
-    pub fn read_query<'a, T0: 'static, T1: 'static>(&'a self) -> EntitiesReadQuery<'a, T0, T1> {
+    pub fn read_query<'a, TResult>(&'a self) -> EntitiesReadQuery<'a, TResult> {
         EntitiesReadQuery {
             page_views: Vec::new(),
             registry: self,
-            _types: (PhantomData::default(), PhantomData::default())
+            t: PhantomData::<TResult>::default()
         }
     }
 }
 
-impl<'a, T0: 'static, T1: 'static> Iterator for EntitiesReadQueryIter<'a, T0, T1> {
-    type Item = (Entity, &'a T0, &'a T1);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let suitable_pages = &self.page_views;
-        let last_entity_index = self.page_entities_ids.len() as isize - 1;
-
-        if (self.current_suitable_page_index < 0) | 
-           (self.current_entity_index >= last_entity_index) 
-        {
-            self.current_suitable_page_index += 1;
-            self.current_entity_index = -1;
-
-            if self.current_suitable_page_index >= suitable_pages.len() as isize {
-                return None;
+macro_rules! impl_entities_read_query {
+    ($($T:tt),*) => {
+        impl<'a, $($T: 'static,)*> Iterator for EntitiesReadQueryIter<'a, ($(&'a [$T],)*)> {
+            type Item = (Entity, ($(&'a $T,)*));
+        
+            fn next(&mut self) -> Option<Self::Item> {
+                let suitable_pages = &self.page_views;
+                let last_entity_index = self.page_entities_ids.len() as isize - 1;
+        
+                if (self.current_suitable_page_index < 0) | (self.current_entity_index >= last_entity_index)
+                {
+                    self.current_suitable_page_index += 1;
+                    self.current_entity_index = -1;
+        
+                    if self.current_suitable_page_index >= suitable_pages.len() as isize {
+                        return None;
+                    }
+        
+                    let page_view = &suitable_pages[self.current_suitable_page_index as usize];
+                    self.slices_buffer = ($(page_view.get_component_slice::<$T>(),)*);
+                    self.page_entities_ids = page_view.page.entities_ids();
+                }
+        
+                self.current_entity_index += 1;
+        
+                let current_entity_index = self.current_entity_index as usize;
+                let entity_id = self.page_entities_ids[current_entity_index];
+                let slices_buffer = self.slices_buffer;
+        
+                return Some((
+                    Entity {
+                        id: entity_id,
+                        version: self.entities_version[entity_id as usize],
+                    },
+                    slices_buffer.as_refs_tuple(current_entity_index)
+                ));
             }
-
-            let page_view = &suitable_pages[self.current_suitable_page_index as usize];
-            self.slices_buffer = (
-                page_view.get_component_slice(),
-                page_view.get_component_slice()
-            );
-            self.page_entities_ids = page_view.page.entities_ids();
         }
 
-        self.current_entity_index += 1;
+        impl<'a, $($T : 'static,)*> IntoIterator for &'a mut EntitiesReadQuery<'a, ($($T,)*)> {
+            type Item = (Entity, ($(&'a $T,)*));
+            type IntoIter = EntitiesReadQueryIter<'a, ($(&'a [$T],)*)>;
 
-        let current_entity_index = self.current_entity_index as usize;
-        let entity_id = self.page_entities_ids[current_entity_index];
+            fn into_iter(self) -> Self::IntoIter {
+                let include_types = [$(TypeId::of::<$T>(),)*];
+                let suitable_indices_iter = self
+                    .registry
+                    .archetypes_container
+                    .get_suitable_page_views(&include_types);
 
-        return Some((
-            Entity {
-                id: entity_id,
-                version: self.entities_version[entity_id as usize]
-            },
-            &self.slices_buffer.0[current_entity_index],
-            &self.slices_buffer.1[current_entity_index],
-        ))
-    }
-}
+                self.page_views.clear();
+                self.page_views.extend(suitable_indices_iter);
 
-impl<'a, T0: 'static, T1: 'static> IntoIterator for &'a mut EntitiesReadQuery<'a, T0, T1> {
-    type Item = (Entity, &'a T0, &'a T1);
-    type IntoIter = EntitiesReadQueryIter<'a, T0, T1>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let include_types = [ TypeId::of::<T0>(), TypeId::of::<T1>(), ];
-        let suitable_indices_iter = self.registry.archetypes_container
-            .get_suitable_page_views(&include_types);
-
-        self.page_views.clear();
-        self.page_views.extend(suitable_indices_iter);
-
-        EntitiesReadQueryIter {
-            page_entities_ids: &[],
-            slices_buffer: (&[], &[]),
-            page_views: &self.page_views,
-            entities_version: self.registry.entities_container.get_entity_versions(),
-            current_suitable_page_index: -1,
-            current_entity_index: -1,
+                EntitiesReadQueryIter {
+                    page_entities_ids: &[],
+                    slices_buffer: ($(&[] as &[$T],)*),
+                    page_views: &self.page_views,
+                    entities_version: self.registry.entities_container.get_entity_versions(),
+                    current_suitable_page_index: -1,
+                    current_entity_index: -1,
+                }
+            }
         }
-    }
+    };
 }
+
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7);
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6);
+impl_entities_read_query!(T0, T1, T2, T3, T4, T5);
+impl_entities_read_query!(T0, T1, T2, T3, T4);
+impl_entities_read_query!(T0, T1, T2, T3);
+impl_entities_read_query!(T0, T1, T2);
+impl_entities_read_query!(T0, T1);
+

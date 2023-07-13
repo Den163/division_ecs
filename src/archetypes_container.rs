@@ -67,7 +67,6 @@ impl ArchetypesContainer {
                 page.push_entity_id(entity_id);
 
                 return EntityInArchetype {
-                    archetype_index,
                     page_index,
                 };
             }
@@ -77,7 +76,6 @@ impl ArchetypesContainer {
         self.pages[page_index].push_entity_id(entity_id);
 
         EntityInArchetype {
-            archetype_index,
             page_index,
         }
     }

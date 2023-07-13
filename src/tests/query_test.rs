@@ -45,9 +45,9 @@ mod test {
         registry.create_entity(&other_arch);
         registry.create_entity(&other_arch);
 
-        let query = &mut registry.read_query::<Position, Rotation>();
+        let query = &mut registry.read_query::<(Position, Rotation)>();
         let mut iter_count = 0;
-        for (e, pos, rot) in query {
+        for (e, (pos, rot)) in query {
             iter_count += 1;
 
             let e_idx = entities.iter().position(|e_check| *e_check == e).unwrap();
