@@ -8,7 +8,7 @@ mod entity_in_archetype;
 mod entities_container;
 mod mem_utils;
 mod registry;
-mod registry_quries;
+mod components_read_query;
 mod tests;
 mod tuple;
 

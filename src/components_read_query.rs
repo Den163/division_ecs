@@ -5,13 +5,15 @@ use crate::{
     TupleOfSliceToTupleOfElementRef
 };
 
-pub struct EntitiesReadQuery<'a, T> {
+// TODO: Better divide non code-gen and generated data to reduce object file size
+
+pub struct ComponentsReadQuery<'a, T> {
     page_views: Vec<ArchetypeDataPageView<'a>>,
     registry: &'a Registry,
     t: PhantomData<T>
 }
 
-pub struct EntitiesReadQueryIter<'a, TResult> {
+pub struct ComponentsReadQueryIter<'a, TResult> {
     current_suitable_page_index: isize,
     current_entity_index: isize,
     page_views: &'a [ArchetypeDataPageView<'a>],
@@ -21,8 +23,8 @@ pub struct EntitiesReadQueryIter<'a, TResult> {
 }
 
 impl Registry {
-    pub fn read_query<'a, TResult>(&'a self) -> EntitiesReadQuery<'a, TResult> {
-        EntitiesReadQuery {
+    pub fn read_query<'a, TResult>(&'a self) -> ComponentsReadQuery<'a, TResult> {
+        ComponentsReadQuery {
             page_views: Vec::new(),
             registry: self,
             t: PhantomData::<TResult>::default()
@@ -32,7 +34,7 @@ impl Registry {
 
 macro_rules! impl_entities_read_query {
     ($($T:tt),*) => {
-        impl<'a, $($T: 'static,)*> Iterator for EntitiesReadQueryIter<'a, ($(&'a [$T],)*)> {
+        impl<'a, $($T: 'static,)*> Iterator for ComponentsReadQueryIter<'a, ($(&'a [$T],)*)> {
             type Item = (Entity, ($(&'a $T,)*));
         
             fn next(&mut self) -> Option<Self::Item> {
@@ -69,9 +71,9 @@ macro_rules! impl_entities_read_query {
             }
         }
 
-        impl<'a, $($T : 'static,)*> IntoIterator for &'a mut EntitiesReadQuery<'a, ($($T,)*)> {
+        impl<'a, $($T : 'static,)*> IntoIterator for &'a mut ComponentsReadQuery<'a, ($($T,)*)> {
             type Item = (Entity, ($(&'a $T,)*));
-            type IntoIter = EntitiesReadQueryIter<'a, ($(&'a [$T],)*)>;
+            type IntoIter = ComponentsReadQueryIter<'a, ($(&'a [$T],)*)>;
 
             fn into_iter(self) -> Self::IntoIter {
                 let include_types = [$(TypeId::of::<$T>(),)*];
@@ -83,7 +85,7 @@ macro_rules! impl_entities_read_query {
                 self.page_views.clear();
                 self.page_views.extend(suitable_indices_iter);
 
-                EntitiesReadQueryIter {
+                ComponentsReadQueryIter {
                     page_entities_ids: &[],
                     slices_buffer: ($(&[] as &[$T],)*),
                     page_views: &self.page_views,
