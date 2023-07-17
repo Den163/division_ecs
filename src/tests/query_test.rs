@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::{Registry, ArchetypeBuilder, ComponentType, component_types};
+    use crate::{Registry, ArchetypeBuilder, component_types};
 
     #[derive(Debug, PartialEq, Clone, Copy)]
     struct Position {

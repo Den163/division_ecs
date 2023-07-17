@@ -143,6 +143,7 @@ impl ArchetypesContainer {
             None => {
                 let page_index = self.pages.len();
                 self.pages.insert(page_index, ArchetypeDataPage::new());
+                self.page_to_archetype.insert(page_index, archetype_index as isize);
                 page_index
             }
         };

@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! component_types {
     ($($T:ident), *) => {
-        [$(ComponentType::of::<$T>()),*]
+        [$(crate::ComponentType::of::<$T>()),*]
     };
 }
 
