@@ -88,15 +88,10 @@ impl Archetype {
             return false;
         }
 
-        let mut left_idx = 0;
         for id in ids_to_check {
-            let result  = self_ids[left_idx..].binary_search(id);
-            match result {
-                Ok(found_idx) => {
-                    left_idx = found_idx + 1;
-                    continue 
-                },
-                Err(_) => return false,
+            let result  = self_ids.binary_search(id);
+            if result.is_err() {
+                return false;
             }
         }
 

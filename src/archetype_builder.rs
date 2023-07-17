@@ -44,7 +44,7 @@ impl ArchetypeBuilder {
     }
 
     pub fn build(mut self) -> Archetype {
-        self.component_types.sort_by_key(|c| c.id());
+        self.component_types.sort_by_key(|a| a.id());
 
         Archetype::new(&mut self.component_types)
     }

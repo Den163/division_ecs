@@ -76,14 +76,13 @@ macro_rules! impl_entities_read_query {
             type IntoIter = ComponentsReadQueryIter<'a, ($(&'a [$T],)*)>;
 
             fn into_iter(self) -> Self::IntoIter {
-                let include_types = [$(TypeId::of::<$T>(),)*];
-                let suitable_indices_iter = self
-                    .registry
-                    .archetypes_container
-                    .get_suitable_page_views(&include_types);
-
                 self.page_views.clear();
-                self.page_views.extend(suitable_indices_iter);
+
+                {
+                    let include_types = [$(TypeId::of::<$T>(),)*];
+                    self.registry.archetypes_container
+                        .fill_suitable_page_views(&include_types, &mut self.page_views);
+                }
 
                 ComponentsReadQueryIter {
                     page_entities_ids: &[],

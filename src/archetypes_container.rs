@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::{any::TypeId, borrow::BorrowMut};
 
 use crate::{
     archetype::Archetype, archetype_data_layout::ArchetypeDataLayout,
@@ -98,16 +98,32 @@ impl ArchetypesContainer {
         }
     }
 
-    pub(crate) fn get_suitable_page_views<'a, 'b>(
+    pub(crate) fn fill_suitable_page_views<'a, 'b>(
         &'a self, 
-        include_types: &'b [TypeId]
-    ) -> impl Iterator<Item=ArchetypeDataPageView> + 'b where 'a: 'b {
-        (&self.archetypes).into_iter().enumerate()
-            .filter(|(_, arch)| { arch.is_include_ids(include_types) })
-            .flat_map(move |(idx, _)| {
-                (&self.archetype_to_pages[idx].pages).into_iter()
-                    .map(|page_idx| self.get_page_view(*page_idx))
-            })
+        include_types: &'b [TypeId],
+        output_page_indices: &'b mut Vec<ArchetypeDataPageView<'a>>,
+    ) {
+        let archetypes = &self.archetypes;
+
+        for (arch_idx, arch) in archetypes.into_iter().enumerate() {
+            if !arch.is_include_ids(include_types) {
+                continue;
+            }
+
+            let page_indices = &self.archetype_to_pages[arch_idx].pages;
+            for page_idx in page_indices {
+                let page = &self.pages[*page_idx];
+                if page.entities_count() == 0 {
+                    continue;
+                }
+
+                output_page_indices.push(ArchetypeDataPageView { 
+                    archetype: &self.archetypes[arch_idx], 
+                    layout: &self.archetype_layouts[arch_idx], 
+                    page,
+                });
+            }
+        }
     }
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
