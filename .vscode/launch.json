@@ -1,0 +1,81 @@
+{
+    // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
+    // Наведите указатель мыши, чтобы просмотреть описания существующих атрибутов.
+    // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'division_ecs'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=division_ecs"
+                ],
+                "filter": {
+                    "name": "division_ecs",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'cache_test'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=cache_test",
+                    "--package=division_ecs"
+                ],
+                "filter": {
+                    "name": "cache_test",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Profile example 'cache_test'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--release",
+                    "--example=cache_test",
+                    "--package=division_ecs"
+                ],
+                "filter": {
+                    "name": "cache_test",
+                    "kind": "example"
+                }
+            }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'cache_test'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=cache_test",
+                    "--package=division_ecs"
+                ],
+                "filter": {
+                    "name": "cache_test",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
