@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ComponentsReadQuery};
 
 #[derive(Clone, Copy)]

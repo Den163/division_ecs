@@ -2,29 +2,30 @@ use paste::paste;
 
 use crate::archetype_data_page::ArchetypeDataPage;
 
-pub trait ComponentsTuple<'a> {
+pub trait ComponentsTuple {
     type OffsetsTuple;
-    type RefsTuple;
 }
 
-pub(crate) trait ComponentsRefsTuple<'a, T> where T: ComponentsTuple<'a> {
-    fn get_refs(page: &'a ArchetypeDataPage, entity_index: usize, offsets: &T::OffsetsTuple) -> T::RefsTuple;
+pub(crate) trait ComponentsRefsTuple<'a, T> where T: ComponentsTuple {
+    type RefsTuple;
+    fn get_refs(page: &'a ArchetypeDataPage, entity_index: usize, offsets: &T::OffsetsTuple) -> Self::RefsTuple;
 }
 
 macro_rules! components_tuple_impl {
     ($($T:ident),*) => {
-        impl<'a, $($T: 'static,)*> ComponentsTuple<'a> for ($($T,)*) {
+        impl<$($T: 'static,)*> ComponentsTuple for ($($T,)*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
-            type RefsTuple = ($(&'a $T,)*);
         }
 
         impl<'a, $($T: 'static,)*> ComponentsRefsTuple<'a, ($($T,)*)> for ($($T,)*) {
+            type RefsTuple = ($(&'a $T,)*);
+
             #[inline(always)]
             fn get_refs(
                 page: &'a ArchetypeDataPage, 
                 entity_index: usize, 
                 ($( paste!([<$T:lower>]) ,) *): &<($($T,)*) as ComponentsTuple>::OffsetsTuple
-            ) -> <($($T,)*) as ComponentsTuple<'a>>::RefsTuple {
+            ) -> Self::RefsTuple {
                 unsafe {(
                     $( &*(page.get_component_data_ptr(entity_index, *paste!{ [<$T:lower>] } , std::mem::size_of::<$T>()) as *const $T), )*
                 )}

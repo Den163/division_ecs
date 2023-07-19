@@ -4,14 +4,14 @@ use crate::{
     Entity, Registry, archetype_data_page::ArchetypeDataPage, type_ids, tuple::{ComponentsTuple, ComponentsRefsTuple}
 };
 
-pub struct ComponentsReadQuery<'a, T> where T: ComponentsTuple<'a> {
+pub struct ComponentsReadQuery<'a, T> where T: ComponentsTuple {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
     registry: &'a Registry,
     _phantom_: PhantomData<T>
 }
 
-pub struct ComponentsReadQueryIter<'a, T> where T: ComponentsTuple<'a> {
+pub struct ComponentsReadQueryIter<'a, T> where T: ComponentsTuple {
     page_views: &'a [PageIterView],
     components_offsets: &'a [T::OffsetsTuple],
     entities_versions: &'a [u32],
@@ -28,7 +28,7 @@ struct PageIterView {
 }
 
 impl Registry {
-    pub fn read_query<'a, T>(&'a self) -> ComponentsReadQuery<T> where T: ComponentsTuple<'a> {
+    pub fn read_query<'a, T>(&'a self) -> ComponentsReadQuery<T> where T: ComponentsTuple {
         ComponentsReadQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
