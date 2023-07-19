@@ -1,5 +1,3 @@
-use std::{any::TypeId, borrow::BorrowMut};
-
 use crate::{
     archetype::Archetype, archetype_data_layout::ArchetypeDataLayout,
     archetype_data_page::ArchetypeDataPage, entity_in_archetype::EntityInArchetype, archetype_data_page_view::ArchetypeDataPageView,
@@ -86,7 +84,7 @@ impl ArchetypesContainer {
         page.remove_entity_id(entity_id);
     }
 
-    pub(crate) fn get_page_view(
+    pub fn get_page_view(
         &self, 
         page_index: usize
     ) -> ArchetypeDataPageView {
@@ -98,32 +96,24 @@ impl ArchetypesContainer {
         }
     }
 
-    pub(crate) fn fill_suitable_page_views<'a, 'b>(
-        &'a self, 
-        include_types: &'b [TypeId],
-        output_page_indices: &'b mut Vec<ArchetypeDataPageView<'a>>,
-    ) {
-        let archetypes = &self.archetypes;
+    #[inline]
+    pub fn get_archetypes(&self) -> &[Archetype] {
+        &self.archetypes
+    }
 
-        for (arch_idx, arch) in archetypes.into_iter().enumerate() {
-            if !arch.is_include_ids(include_types) {
-                continue;
-            }
+    #[inline]
+    pub fn get_layouts(&self) -> &[ArchetypeDataLayout] {
+        &self.archetype_layouts
+    }
 
-            let page_indices = &self.archetype_to_pages[arch_idx].pages;
-            for page_idx in page_indices {
-                let page = &self.pages[*page_idx];
-                if page.entities_count() == 0 {
-                    continue;
-                }
+    #[inline]
+    pub fn get_pages(&self) -> &[ArchetypeDataPage] {
+        &self.pages
+    }
 
-                output_page_indices.push(ArchetypeDataPageView { 
-                    archetype: &self.archetypes[arch_idx], 
-                    layout: &self.archetype_layouts[arch_idx], 
-                    page,
-                });
-            }
-        }
+    #[inline]
+    pub fn get_archetype_page_indices(&self, archetype_index: usize) -> &[usize] {
+        &self.archetype_to_pages[archetype_index].pages
     }
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {

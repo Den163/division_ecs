@@ -28,24 +28,6 @@ impl<'a> ArchetypeDataPageView<'a> {
         }
     }
 
-    pub fn get_component_slice<T: 'static>(&'a self) -> &'a [T] {
-        unsafe {
-            &*std::ptr::slice_from_raw_parts(
-                self.get_component_ptr(0), 
-                self.page.entities_count()
-            )
-        }
-    }
-
-    pub fn get_component_slice_mut<T: 'static>(&'a self) -> &'a mut [T] {
-        unsafe {
-            &mut *std::ptr::slice_from_raw_parts_mut(
-                self.get_component_ptr_mut(0), 
-                self.page.entities_count()
-            )
-        }
-    }
-    
     #[inline(always)]
     pub fn get_component_ptr<T: 'static>(&self, page_entity_index: usize) -> *const T {
         self.page.get_component_data_ptr(

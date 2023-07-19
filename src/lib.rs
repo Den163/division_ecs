@@ -19,10 +19,8 @@ pub mod macros;
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;
 pub use component_type::ComponentType;
+pub use components_read_query::ComponentsReadQuery;
 pub use entity::Entity;
 pub use registry::Registry;
-pub(crate) use tuple::TupleOfSliceToTupleOfElementRef;
 
 use entities_container::EntitiesContainer;
-
-include!( concat!(env!("OUT_DIR"), "/tuple.gen.rs") );

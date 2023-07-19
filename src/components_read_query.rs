@@ -1,112 +1,149 @@
 use std::{any::TypeId, marker::PhantomData};
 
 use crate::{
-    archetype_data_page_view::ArchetypeDataPageView, Entity, Registry, 
-    TupleOfSliceToTupleOfElementRef
+    Entity, Registry, archetype_data_page::ArchetypeDataPage, type_ids, tuple::{ComponentsTuple, ComponentsRefsTuple}
 };
 
-// TODO: Better divide non code-gen and generated data to reduce object file size
-
-pub struct ComponentsReadQuery<'a, T> {
-    page_views: Vec<ArchetypeDataPageView<'a>>,
+pub struct ComponentsReadQuery<'a, T> where T: ComponentsTuple<'a> {
+    page_views: Vec<PageIterView>,
+    components_offsets: Vec<T::OffsetsTuple>,
     registry: &'a Registry,
-    t: PhantomData<T>
+    _phantom_: PhantomData<T>
 }
 
-pub struct ComponentsReadQueryIter<'a, TResult> {
-    current_suitable_page_index: isize,
-    current_entity_index: isize,
-    page_views: &'a [ArchetypeDataPageView<'a>],
-    entities_version: &'a [u32],
-    page_entities_ids: &'a [u32],
-    slices_buffer: TResult,
+pub struct ComponentsReadQueryIter<'a, T> where T: ComponentsTuple<'a> {
+    page_views: &'a [PageIterView],
+    components_offsets: &'a [T::OffsetsTuple],
+    entities_versions: &'a [u32],
+
+    current_page_view_index: usize,
+    current_entity_index: usize,
+
+    _phantom_: PhantomData<T>
+}
+
+struct PageIterView {
+    page: *const ArchetypeDataPage,
+    components_offsets_index: usize
 }
 
 impl Registry {
-    pub fn read_query<'a, TResult>(&'a self) -> ComponentsReadQuery<'a, TResult> {
+    pub fn read_query<'a, T>(&'a self) -> ComponentsReadQuery<T> where T: ComponentsTuple<'a> {
         ComponentsReadQuery {
             page_views: Vec::new(),
+            components_offsets: Vec::new(),
             registry: self,
-            t: PhantomData::<TResult>::default()
+            _phantom_: PhantomData::<T>::default()
         }
     }
 }
 
-macro_rules! impl_entities_read_query {
+macro_rules! components_read_query_impl {
     ($($T:tt),*) => {
-        impl<'a, $($T: 'static,)*> Iterator for ComponentsReadQueryIter<'a, ($(&'a [$T],)*)> {
+        impl<'a, $($T: 'static),*> Iterator for ComponentsReadQueryIter<'a, ($($T,)*)> {
             type Item = (Entity, ($(&'a $T,)*));
-        
+            
+            #[inline(always)]
             fn next(&mut self) -> Option<Self::Item> {
-                let suitable_pages = &self.page_views;
-                let last_entity_index = self.page_entities_ids.len() as isize - 1;
+                let page_views = self.page_views;
+                let page_view_count = self.page_views.len();
         
-                if (self.current_suitable_page_index < 0) | (self.current_entity_index >= last_entity_index)
-                {
-                    self.current_suitable_page_index += 1;
-                    self.current_entity_index = -1;
+                if self.current_page_view_index >= page_view_count {
+                    return None;
+                }
         
-                    if self.current_suitable_page_index >= suitable_pages.len() as isize {
+                let mut curr_page_view = &page_views[self.current_page_view_index];
+                let mut curr_page = curr_page_view.page;
+                let mut entities_ids = unsafe { (&*curr_page).entities_ids() };
+        
+                if self.current_entity_index >= entities_ids.len() {
+                    self.current_page_view_index += 1;
+        
+                    if self.current_page_view_index >= page_view_count {
                         return None;
                     }
         
-                    let page_view = &suitable_pages[self.current_suitable_page_index as usize];
-                    self.slices_buffer = ($(page_view.get_component_slice::<$T>(),)*);
-                    self.page_entities_ids = page_view.page.entities_ids();
+                    self.current_entity_index = 0;
+        
+                    curr_page_view = unsafe { page_views.get_unchecked(self.current_page_view_index) };
+                    curr_page = curr_page_view.page;
+                    entities_ids = unsafe { (&*curr_page).entities_ids() };
                 }
+                
+                unsafe {
+                    let curr_entity_idx = self.current_entity_index;
+                    let id = *entities_ids.get_unchecked(curr_entity_idx);
+                    let version = *self.entities_versions.get_unchecked(id as usize);
+                    let offsets = &self.components_offsets.get_unchecked(curr_page_view.components_offsets_index);
         
-                self.current_entity_index += 1;
+                    self.current_entity_index += 1;
         
-                let current_entity_index = self.current_entity_index as usize;
-                let entity_id = self.page_entities_ids[current_entity_index];
-                let slices_buffer = self.slices_buffer;
-        
-                return Some((
-                    Entity {
-                        id: entity_id,
-                        version: self.entities_version[entity_id as usize],
-                    },
-                    slices_buffer.as_refs_tuple(current_entity_index)
-                ));
+                    return Some((
+                        Entity { id, version },
+                        <($($T,)*) as ComponentsRefsTuple<'a, ($($T,)*)>>::get_refs(&*curr_page, curr_entity_idx, offsets)
+                    ));
+                }
             }
         }
+        
+        impl<'a, $($T: 'static),*> IntoIterator for &'a mut ComponentsReadQuery<'a, ($($T,)*)> {
+            type IntoIter = ComponentsReadQueryIter<'a, ($($T,)*)>;
+            type Item = <Self::IntoIter as Iterator>::Item;
 
-        impl<'a, $($T : 'static,)*> IntoIterator for &'a mut ComponentsReadQuery<'a, ($($T,)*)> {
-            type Item = (Entity, ($(&'a $T,)*));
-            type IntoIter = ComponentsReadQueryIter<'a, ($(&'a [$T],)*)>;
-
+        
             fn into_iter(self) -> Self::IntoIter {
+                let arch_container = &self.registry.archetypes_container;
+                let archetypes = arch_container.get_archetypes();
+                let layouts = arch_container.get_layouts();
+                let pages = arch_container.get_pages();
+        
+                self.components_offsets.clear();
                 self.page_views.clear();
-
-                {
-                    let include_types = [$(TypeId::of::<$T>(),)*];
-                    self.registry.archetypes_container
-                        .fill_suitable_page_views(&include_types, &mut self.page_views);
+        
+                for (arch_idx, arch) in archetypes.into_iter().enumerate() {
+                    if arch.is_include_ids(&type_ids!($($T),*)) == false {
+                        continue;
+                    }
+                    let offsets = &layouts[arch_idx].component_offsets();
+                    self.components_offsets.push(unsafe {(
+                        $(*offsets.add(arch.find_component_index(std::any::TypeId::of::<$T>()).unwrap_unchecked()),)*
+                    )});
+        
+                    let components_offsets_index = self.components_offsets.len() - 1;
+                    let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
+        
+                    for page_idx in arch_pages {
+                        let page = &pages[*page_idx];
+                        if page.entities_count() == 0 {
+                            continue;
+                        }
+        
+                        self.page_views.push(PageIterView { page, components_offsets_index });
+                    }
                 }
-
+        
                 ComponentsReadQueryIter {
-                    page_entities_ids: &[],
-                    slices_buffer: ($(&[] as &[$T],)*),
+                    _phantom_: PhantomData::default(),
+                    current_page_view_index: 0,
+                    current_entity_index: 0,
+                    components_offsets: &self.components_offsets,
                     page_views: &self.page_views,
-                    entities_version: self.registry.entities_container.get_entity_versions(),
-                    current_suitable_page_index: -1,
-                    current_entity_index: -1,
+                    entities_versions: self.registry.entities_container.get_entity_versions(),
                 }
             }
         }
     };
 }
 
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6, T7);
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5, T6);
-impl_entities_read_query!(T0, T1, T2, T3, T4, T5);
-impl_entities_read_query!(T0, T1, T2, T3, T4);
-impl_entities_read_query!(T0, T1, T2, T3);
-impl_entities_read_query!(T0, T1, T2);
-impl_entities_read_query!(T0, T1);
-impl_entities_read_query!(T0);
-
+components_read_query_impl!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+components_read_query_impl!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+components_read_query_impl!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
+components_read_query_impl!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
+components_read_query_impl!(T0, T1, T2, T3, T4, T5, T6, T7);
+components_read_query_impl!(T0, T1, T2, T3, T4, T5, T6);
+components_read_query_impl!(T0, T1, T2, T3, T4, T5);
+components_read_query_impl!(T0, T1, T2, T3, T4);
+components_read_query_impl!(T0, T1, T2, T3);
+components_read_query_impl!(T0, T1, T2);
+components_read_query_impl!(T0, T1);
+components_read_query_impl!(T0);
