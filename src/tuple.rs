@@ -9,10 +9,14 @@ pub trait ComponentsTuple {
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
 }
 
-pub(crate) trait ComponentsRefsTuple<'a, T> where T: ComponentsTuple {
-    type RefsTuple;
+pub trait ComponentsRefsTuple<'a> where Self::Components : ComponentsTuple {
+    type Components;
 
-    fn get_refs(page: &'a ArchetypeDataPage, entity_index: usize, offsets: &T::OffsetsTuple) -> Self::RefsTuple;
+    fn get_refs(
+        page: &'a ArchetypeDataPage, 
+        entity_index: usize, 
+        offsets: &<Self::Components as ComponentsTuple>::OffsetsTuple
+    ) -> Self;
 }
 
 macro_rules! components_tuple_impl {
@@ -33,15 +37,15 @@ macro_rules! components_tuple_impl {
             }
         }
 
-        impl<'a, $($T: 'static,)*> ComponentsRefsTuple<'a, ($($T,)*)> for ($($T,)*) {
-            type RefsTuple = ($(&'a $T,)*);
+        impl<'a, $($T: 'static,)*> ComponentsRefsTuple<'a> for ($(&'a $T,)*) {
+            type Components = ($($T,)*);
 
             #[inline(always)]
             fn get_refs(
                 page: &'a ArchetypeDataPage, 
                 entity_index: usize, 
                 ($( paste!([<$T:lower>]) ,) *): &<($($T,)*) as ComponentsTuple>::OffsetsTuple
-            ) -> Self::RefsTuple {
+            ) -> Self {
                 unsafe {(
                     $( &*(page.get_component_data_ptr(entity_index, *paste!{ [<$T:lower>] } , std::mem::size_of::<$T>()) as *const $T), )*
                 )}
