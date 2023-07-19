@@ -8,6 +8,6 @@ macro_rules! component_types {
 #[macro_export]
 macro_rules! type_ids {
     ($($T:ident), *) => {
-        [$(TypeId::of::<$T>()),*]
+        [$(std::any::TypeId::of::<$T>()),*]
     };
 }

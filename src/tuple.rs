@@ -1,13 +1,17 @@
 use paste::paste;
 
-use crate::archetype_data_page::ArchetypeDataPage;
+use crate::{archetype_data_page::ArchetypeDataPage, Archetype, type_ids};
 
 pub trait ComponentsTuple {
     type OffsetsTuple;
+
+    fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple;
+    fn is_archetype_include_types(archetype: &Archetype) -> bool;
 }
 
 pub(crate) trait ComponentsRefsTuple<'a, T> where T: ComponentsTuple {
     type RefsTuple;
+
     fn get_refs(page: &'a ArchetypeDataPage, entity_index: usize, offsets: &T::OffsetsTuple) -> Self::RefsTuple;
 }
 
@@ -15,6 +19,18 @@ macro_rules! components_tuple_impl {
     ($($T:ident),*) => {
         impl<$($T: 'static,)*> ComponentsTuple for ($($T,)*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
+
+            #[inline]
+            fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
+                unsafe {(
+                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap_unchecked()),)*
+                )}
+            }
+
+            #[inline]
+            fn is_archetype_include_types(archetype: &Archetype) -> bool {
+                archetype.is_include_ids(&type_ids!($($T),*))
+            }
         }
 
         impl<'a, $($T: 'static,)*> ComponentsRefsTuple<'a, ($($T,)*)> for ($($T,)*) {

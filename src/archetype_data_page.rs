@@ -74,8 +74,7 @@ impl ArchetypeDataPage {
         type_size: usize,
     ) -> *mut u8 {
         unsafe {
-            self.components_data_ptr
-                .add(component_offset + entity_index * type_size)
+            self.components_data_ptr.add(component_offset + entity_index * type_size)
         }
     }
 
@@ -86,7 +85,9 @@ impl ArchetypeDataPage {
         component_offset: usize,
         type_size: usize
     ) -> *const u8 {
-        self.get_component_data_ptr_mut(entity_index, component_offset, type_size)
+        unsafe {
+            self.components_data_ptr.add(component_offset + entity_index * type_size)
+        }
     }
 }
 
