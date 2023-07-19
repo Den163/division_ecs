@@ -124,14 +124,6 @@ impl EntitiesContainer {
     }
 
     #[inline(always)]
-    pub(crate) fn get_entity_by_id(&self, entity_id: u32) -> Entity {
-        Entity {
-            version: unsafe { *self.entity_to_version.add(entity_id as usize) },
-            id: entity_id
-        }
-    }
-
-    #[inline(always)]
     pub(crate) fn get_entity_versions(&self) -> &[u32] {
         unsafe {
             &*std::ptr::slice_from_raw_parts(self.entity_to_version, self.capacity)

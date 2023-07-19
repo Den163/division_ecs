@@ -21,15 +21,15 @@ struct Rotation {
 
 #[derive(Clone, Copy)]
 struct DirtyData {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub _x: f32,
+    pub _y: f32,
+    pub _z: f32,
     pub w: f32
 }
 
 #[derive(Clone, Copy)]
 struct MovingUnit {
-    pub speed: f32,
+    pub _speed: f32,
     pub attack: f32,
     pub hit_rate: f32
 }
@@ -63,12 +63,12 @@ pub fn main() {
 fn create_data_arrays() -> Vec<AosObject> {
     let mut data = Vec::with_capacity(ENTITIES_COUNT);
 
-    for i in 0..ENTITIES_COUNT {
+    for _ in 0..ENTITIES_COUNT {
         data.push(AosObject {
             position: Position { x: rand::random(), y: rand::random() },
             rotation: Rotation { angle: rand::random() },
-            moving_unit: MovingUnit { speed: rand::random(), attack: rand::random(), hit_rate: rand::random() },
-            dirty_data: DirtyData { x: rand::random(), y: rand::random(), z: rand::random(), w: rand::random() }
+            moving_unit: MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() },
+            dirty_data: DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), w: rand::random() }
         })
     }
 
@@ -84,7 +84,7 @@ fn create_query(registry: &Registry) -> ComponentsReadQuery<(Position, Rotation,
 fn warmup_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, Rotation, MovingUnit)>) {
     let mut result = 0u32;
 
-    for (e, (poos, rot, mov)) in registry.iter(query) {
+    for (e, (_, _, _)) in registry.iter(query) {
         result = result.wrapping_add(e.id());
     }
 
