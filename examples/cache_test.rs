@@ -1,4 +1,4 @@
-use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ComponentsReadQuery};
+use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ComponentsReadQuery, QueryIterator};
 
 #[derive(Clone, Copy)]
 struct AosObject {
@@ -50,7 +50,11 @@ pub fn main() {
     let mut query = create_query(&registry);
 
     {
-        let ecs_result = iterate_ecs(&mut query);
+        warmup_ecs(&registry, &mut query);
+    }
+
+    {
+        let ecs_result = iterate_ecs(&registry, &mut query);
         println!("Ecs result: {ecs_result}");
     }
 }
@@ -77,10 +81,10 @@ fn create_query(registry: &Registry) -> ComponentsReadQuery<(Position, Rotation,
 }
 
 #[inline(never)]
-fn warmup_ecs<'a>(query: &'a mut ComponentsReadQuery<'a, (Position, Rotation, MovingUnit)>) {
+fn warmup_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, Rotation, MovingUnit)>) {
     let mut result = 0u32;
 
-    for (e, (poos, rot, mov)) in query {
+    for (e, (poos, rot, mov)) in registry.iter(query) {
         result = result.wrapping_add(e.id());
     }
 
@@ -102,11 +106,11 @@ fn populate_ecs(registry: &mut Registry, data: &Vec<AosObject>) {
 }
 
 #[inline(never)]
-fn iterate_ecs<'a>(query: &'a mut ComponentsReadQuery<'a, (Position, Rotation, MovingUnit)>) -> f32 {
+fn iterate_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, Rotation, MovingUnit)>) -> f32 {
     let mut result = 0.;
     let mut counter = 0;
 
-    for (_, (pos, rot, moving_unit)) in query {
+    for (_, (pos, rot, moving_unit)) in registry.iter(query) {
         result += test_op(pos, rot, moving_unit);
         counter += 1;
     }

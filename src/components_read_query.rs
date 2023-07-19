@@ -4,10 +4,13 @@ use crate::{
     Entity, Registry, archetype_data_page::ArchetypeDataPage, type_ids, tuple::{ComponentsTuple, ComponentsRefsTuple}
 };
 
-pub struct ComponentsReadQuery<'a, T> where T: ComponentsTuple {
+pub trait QueryIterator<T> where T: ComponentsTuple {
+    fn iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsReadQuery<T>) -> ComponentsReadQueryIter<'a, T>;
+}
+
+pub struct ComponentsReadQuery<T> where T: ComponentsTuple {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
-    registry: &'a Registry,
     _phantom_: PhantomData<T>
 }
 
@@ -28,11 +31,10 @@ struct PageIterView {
 }
 
 impl Registry {
-    pub fn read_query<'a, T>(&'a self) -> ComponentsReadQuery<T> where T: ComponentsTuple {
+    pub fn read_query<T>(&self) -> ComponentsReadQuery<T> where T: ComponentsTuple {
         ComponentsReadQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
-            registry: self,
             _phantom_: PhantomData::<T>::default()
         }
     }
@@ -85,31 +87,27 @@ macro_rules! components_read_query_impl {
                 }
             }
         }
-        
-        impl<'a, $($T: 'static),*> IntoIterator for &'a mut ComponentsReadQuery<'a, ($($T,)*)> {
-            type IntoIter = ComponentsReadQueryIter<'a, ($($T,)*)>;
-            type Item = <Self::IntoIter as Iterator>::Item;
 
-        
-            fn into_iter(self) -> Self::IntoIter {
-                let arch_container = &self.registry.archetypes_container;
+        impl<$($T: 'static),*> QueryIterator<($($T,)*)> for Registry {
+            fn iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsReadQuery<($($T,)*)>) -> ComponentsReadQueryIter<'a, ($($T,)*)> {
+                let arch_container = &self.archetypes_container;
                 let archetypes = arch_container.get_archetypes();
                 let layouts = arch_container.get_layouts();
                 let pages = arch_container.get_pages();
         
-                self.components_offsets.clear();
-                self.page_views.clear();
+                query.components_offsets.clear();
+                query.page_views.clear();
         
                 for (arch_idx, arch) in archetypes.into_iter().enumerate() {
                     if arch.is_include_ids(&type_ids!($($T),*)) == false {
                         continue;
                     }
                     let offsets = &layouts[arch_idx].component_offsets();
-                    self.components_offsets.push(unsafe {(
+                    query.components_offsets.push(unsafe {(
                         $(*offsets.add(arch.find_component_index(std::any::TypeId::of::<$T>()).unwrap_unchecked()),)*
                     )});
         
-                    let components_offsets_index = self.components_offsets.len() - 1;
+                    let components_offsets_index = query.components_offsets.len() - 1;
                     let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
         
                     for page_idx in arch_pages {
@@ -118,7 +116,7 @@ macro_rules! components_read_query_impl {
                             continue;
                         }
         
-                        self.page_views.push(PageIterView { page, components_offsets_index });
+                        query.page_views.push(PageIterView { page, components_offsets_index });
                     }
                 }
         
@@ -126,12 +124,12 @@ macro_rules! components_read_query_impl {
                     _phantom_: PhantomData::default(),
                     current_page_view_index: 0,
                     current_entity_index: 0,
-                    components_offsets: &self.components_offsets,
-                    page_views: &self.page_views,
-                    entities_versions: self.registry.entities_container.get_entity_versions(),
+                    components_offsets: &query.components_offsets,
+                    page_views: &query.page_views,
+                    entities_versions: self.entities_container.get_entity_versions(),
                 }
             }
-        }
+        }        
     };
 }
 
