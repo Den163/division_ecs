@@ -1,11 +1,10 @@
 use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ComponentsReadQuery, QueryIterator};
 
-#[derive(Clone, Copy)]
 struct AosObject {
-    position: Position,
-    rotation: Rotation,
-    moving_unit: MovingUnit,
-    dirty_data: DirtyData
+    position: Box<Position>,
+    rotation: Box<Rotation>,
+    moving_unit: Box<MovingUnit>,
+    dirty_data: Box<DirtyData>
 }
 
 #[derive(Clone, Copy)]
@@ -34,7 +33,7 @@ struct MovingUnit {
     pub hit_rate: f32
 }
 
-pub const ENTITIES_COUNT: usize = 1_000_000;
+pub const ENTITIES_COUNT: usize = 100_000;
 
 pub fn main() {
     let mut registry = Registry::new();
@@ -44,32 +43,28 @@ pub fn main() {
         populate_ecs(&mut registry, &aos_data);
     }
 
-    let aos_result = iterate_aos(&aos_data);
+    let aos_result = iterate_oop(&aos_data);
     println!("Array of structs result: {aos_result}");
 
     let mut query = create_query(&registry);
 
-    {
-        warmup_ecs(&registry, &mut query);
-    }
+    warmup_ecs(&registry, &mut query);
 
-    {
-        let ecs_result = iterate_ecs(&registry, &mut query);
-        println!("Ecs result: {ecs_result}");
-    }
+    let ecs_result = iterate_ecs(&registry, &mut query);
+    println!("Ecs result: {ecs_result}");
 }
 
 #[inline(never)]
-fn create_data_arrays() -> Vec<AosObject> {
+fn create_data_arrays() -> Vec<Box<AosObject>> {
     let mut data = Vec::with_capacity(ENTITIES_COUNT);
 
     for _ in 0..ENTITIES_COUNT {
-        data.push(AosObject {
-            position: Position { x: rand::random(), y: rand::random() },
-            rotation: Rotation { angle: rand::random() },
-            moving_unit: MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() },
-            dirty_data: DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), w: rand::random() }
-        })
+        data.push(Box::new(AosObject {
+            position: Box::new(Position { x: rand::random(), y: rand::random() }),
+            rotation: Box::new(Rotation { angle: rand::random() }),
+            moving_unit: Box::new(MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() }),
+            dirty_data: Box::new(DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), w: rand::random() })
+        }));
     }
 
     data
@@ -92,16 +87,16 @@ fn warmup_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, Ro
 }
 
 #[inline(never)]
-fn populate_ecs(registry: &mut Registry, data: &Vec<AosObject>) {
+fn populate_ecs(registry: &mut Registry, data: &Vec<Box<AosObject>>) {
     let pos_rot_arch = ArchetypeBuilder::new()
         .component_types(&component_types!(Position, Rotation, MovingUnit))
         .build();
 
     for d in data {
         let e = registry.create_entity(&pos_rot_arch);
-        *registry.get_component_ref_mut(e) = d.position;
-        *registry.get_component_ref_mut(e) = d.rotation;
-        *registry.get_component_ref_mut(e) = d.moving_unit;
+        *registry.get_component_ref_mut(e) = *d.position;
+        *registry.get_component_ref_mut(e) = *d.rotation;
+        *registry.get_component_ref_mut(e) = *d.moving_unit;
     }
 }
 
@@ -119,7 +114,7 @@ fn iterate_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, R
 }
 
 #[inline(never)]
-fn iterate_aos(oops: &Vec<AosObject>) -> f32 {
+fn iterate_oop(oops: &Vec<Box<AosObject>>) -> f32 {
     let mut result = 0.;
     let mut counter = 0;
 
