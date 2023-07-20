@@ -1,10 +1,10 @@
 use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ComponentsReadQuery, QueryIterator};
 
 struct AosObject {
-    position: Box<Position>,
-    rotation: Box<Rotation>,
-    moving_unit: Box<MovingUnit>,
-    dirty_data: Box<DirtyData>
+    position: Position,
+    rotation: Rotation,
+    moving_unit: MovingUnit,
+    dirty_data: DirtyData,
 }
 
 #[derive(Clone, Copy)]
@@ -35,6 +35,7 @@ struct MovingUnit {
 
 pub const ENTITIES_COUNT: usize = 100_000;
 
+#[inline(never)]
 pub fn main() {
     let mut registry = Registry::new();
     let aos_data = create_data_arrays();
@@ -60,10 +61,10 @@ fn create_data_arrays() -> Vec<Box<AosObject>> {
 
     for _ in 0..ENTITIES_COUNT {
         data.push(Box::new(AosObject {
-            position: Box::new(Position { x: rand::random(), y: rand::random() }),
-            rotation: Box::new(Rotation { angle: rand::random() }),
-            moving_unit: Box::new(MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() }),
-            dirty_data: Box::new(DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), w: rand::random() })
+            position: Position { x: rand::random(), y: rand::random() },
+            rotation: Rotation { angle: rand::random() },
+            moving_unit: MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() },
+            dirty_data: DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), w: rand::random() }
         }));
     }
 
@@ -94,9 +95,9 @@ fn populate_ecs(registry: &mut Registry, data: &Vec<Box<AosObject>>) {
 
     for d in data {
         let e = registry.create_entity(&pos_rot_arch);
-        *registry.get_component_ref_mut(e) = *d.position;
-        *registry.get_component_ref_mut(e) = *d.rotation;
-        *registry.get_component_ref_mut(e) = *d.moving_unit;
+        *registry.get_component_ref_mut(e) = d.position;
+        *registry.get_component_ref_mut(e) = d.rotation;
+        *registry.get_component_ref_mut(e) = d.moving_unit;
     }
 }
 
