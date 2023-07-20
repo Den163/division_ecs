@@ -9,7 +9,7 @@ pub struct ArchetypeDataPage {
 }
 
 impl ArchetypeDataPage {
-    pub const PAGE_SIZE_BYTES: usize = 4096;
+    pub const PAGE_SIZE_BYTES: usize = 4096 * 4;
 
     pub(crate) fn new() -> Self {
         let components_data_ptr = mem_utils::alloc(Self::PAGE_SIZE_BYTES);

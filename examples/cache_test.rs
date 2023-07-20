@@ -23,7 +23,7 @@ struct DirtyData {
     pub _x: f32,
     pub _y: f32,
     pub _z: f32,
-    pub w: f32
+    pub _w: f32
 }
 
 #[derive(Clone, Copy)]
@@ -33,7 +33,7 @@ struct MovingUnit {
     pub hit_rate: f32
 }
 
-pub const ENTITIES_COUNT: usize = 100_000;
+pub const ENTITIES_COUNT: usize = 1_000_000;
 
 #[inline(never)]
 pub fn main() {
@@ -53,6 +53,10 @@ pub fn main() {
 
     let ecs_result = iterate_ecs(&registry, &mut query);
     println!("Ecs result: {ecs_result}");
+
+
+    let last_w = aos_data[ENTITIES_COUNT - 1].dirty_data._w;
+    println!("Last dirty data w: {last_w}");
 }
 
 #[inline(never)]
@@ -64,7 +68,7 @@ fn create_data_arrays() -> Vec<Box<AosObject>> {
             position: Position { x: rand::random(), y: rand::random() },
             rotation: Rotation { angle: rand::random() },
             moving_unit: MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() },
-            dirty_data: DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), w: rand::random() }
+            dirty_data: DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), _w: rand::random() }
         }));
     }
 
@@ -120,7 +124,7 @@ fn iterate_oop(oops: &Vec<Box<AosObject>>) -> f32 {
     let mut counter = 0;
 
     for obj in oops {
-        result += test_op(&obj.position, &obj.rotation, &obj.moving_unit) * obj.dirty_data.w;
+        result += test_op(&obj.position, &obj.rotation, &obj.moving_unit);
         counter += 1;
     }
 
