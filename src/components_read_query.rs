@@ -1,20 +1,31 @@
 use std::marker::PhantomData;
 
 use crate::{
-    Entity, Store, archetype_data_page::ArchetypeDataPage, tuple::{ComponentsTuple, ComponentsRefsTuple}
+    archetype_data_page::ArchetypeDataPage,
+    tuple::{ComponentsRefsTuple, ComponentsTuple},
+    Entity, Store,
 };
 
-pub trait QueryIterator<'a, T> where T: ComponentsRefsTuple<'a> {
+pub trait QueryIterator<'a, T>
+where
+    T: ComponentsRefsTuple<'a>,
+{
     fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T>;
 }
 
-pub struct ReadQuery<T> where T: ComponentsTuple {
+pub struct ReadQuery<T>
+where
+    T: ComponentsTuple,
+{
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
-    _phantom_: PhantomData<T>
+    _phantom_: PhantomData<T>,
 }
 
-pub struct ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
+pub struct ReadQueryIter<'a, T>
+where
+    T: ComponentsRefsTuple<'a>,
+{
     page_views: &'a [PageIterView],
     components_offsets: &'a [<T::Components as ComponentsTuple>::OffsetsTuple],
     entities_versions: &'a [u32],
@@ -22,25 +33,31 @@ pub struct ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
     current_page_view_index: usize,
     current_entity_index: usize,
 
-    _phantom_: PhantomData<T>
+    _phantom_: PhantomData<T>,
 }
 
 struct PageIterView {
     page: *const ArchetypeDataPage,
-    components_offsets_index: usize
+    components_offsets_index: usize,
 }
 
-impl<T> ReadQuery<T> where T: ComponentsTuple {
+impl<T> ReadQuery<T>
+where
+    T: ComponentsTuple,
+{
     pub fn new() -> Self {
         ReadQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
-            _phantom_: PhantomData::<T>::default()
+            _phantom_: PhantomData::<T>::default(),
         }
     }
 }
 
-impl<'a, T> QueryIterator<'a, T> for Store where T: ComponentsRefsTuple<'a> {
+impl<'a, T> QueryIterator<'a, T> for Store
+where
+    T: ComponentsRefsTuple<'a>,
+{
     fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
@@ -56,7 +73,9 @@ impl<'a, T> QueryIterator<'a, T> for Store where T: ComponentsRefsTuple<'a> {
             }
 
             let offsets = layouts[arch_idx].component_offsets();
-            query.components_offsets.push(T::Components::get_offsets(arch, offsets));
+            query
+                .components_offsets
+                .push(T::Components::get_offsets(arch, offsets));
 
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
@@ -67,7 +86,10 @@ impl<'a, T> QueryIterator<'a, T> for Store where T: ComponentsRefsTuple<'a> {
                     continue;
                 }
 
-                query.page_views.push(PageIterView { page, components_offsets_index });
+                query.page_views.push(PageIterView {
+                    page,
+                    components_offsets_index,
+                });
             }
         }
 
@@ -82,9 +104,12 @@ impl<'a, T> QueryIterator<'a, T> for Store where T: ComponentsRefsTuple<'a> {
     }
 }
 
-impl<'a, T> Iterator for ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
+impl<'a, T> Iterator for ReadQueryIter<'a, T>
+where
+    T: ComponentsRefsTuple<'a>,
+{
     type Item = (Entity, T);
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         let page_views = self.page_views;
         let page_view_count = self.page_views.len();
@@ -94,35 +119,33 @@ impl<'a, T> Iterator for ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
         }
 
         let mut curr_page_view = &page_views[self.current_page_view_index];
-        let mut curr_page = curr_page_view.page;
-        let mut entities_ids = unsafe { (&*curr_page).entities_ids() };
+        let mut curr_page = unsafe { &*curr_page_view.page };
+        let mut entities_ids = curr_page.entities_ids();
 
         if self.current_entity_index >= entities_ids.len() {
             self.current_page_view_index += 1;
+            self.current_entity_index = 0;
 
             if self.current_page_view_index >= page_view_count {
                 return None;
             }
 
-            self.current_entity_index = 0;
-
             curr_page_view = unsafe { page_views.get_unchecked(self.current_page_view_index) };
-            curr_page = curr_page_view.page;
-            entities_ids = unsafe { (&*curr_page).entities_ids() };
+            curr_page = unsafe { &*curr_page_view.page };
+            entities_ids = curr_page.entities_ids();
         }
-        
+
         unsafe {
             let curr_entity_idx = self.current_entity_index;
             let id = *entities_ids.get_unchecked(curr_entity_idx);
             let version = *self.entities_versions.get_unchecked(id as usize);
-            let offsets = 
-                self.components_offsets.get_unchecked(curr_page_view.components_offsets_index);
+            let offsets = self.components_offsets.get_unchecked(curr_page_view.components_offsets_index);
 
             self.current_entity_index += 1;
 
             return Some((
                 Entity { id, version },
-                T::get_refs(&*curr_page, curr_entity_idx, offsets)
+                T::get_refs(curr_page, curr_entity_idx, offsets),
             ));
         }
     }

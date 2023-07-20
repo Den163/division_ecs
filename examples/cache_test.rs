@@ -33,7 +33,7 @@ struct MovingUnit {
     pub hit_rate: f32
 }
 
-pub const ENTITIES_COUNT: usize = 1_000_000;
+pub const ENTITIES_COUNT: usize = 2_000_000;
 
 #[inline(never)]
 pub fn main() {
