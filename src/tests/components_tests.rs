@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use crate::{ArchetypeBuilder, Registry};
+    use crate::{ArchetypeBuilder, Store};
 
     #[test]
     fn registry_set_value_for_entity_as_expected() {
         let entities_capacity = 255;
-        let mut registry = Registry::with_capacity(entities_capacity);
+        let mut registry = Store::with_capacity(entities_capacity);
         let archetype = ArchetypeBuilder::new()
             .component::<u64>()
             .component::<u128>()
@@ -43,7 +43,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn registry_get_component_ref_mut_panics_if_component_doesnt_exist() {
-        let mut registry = Registry::new();
+        let mut registry = Store::new();
         let archetype = ArchetypeBuilder::new()
             .component::<u64>()
             .component::<u128>()
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn registry_get_component_ref_mut_panics_if_entity_doesnt_alive() {
-        let mut registry = Registry::new();
+        let mut registry = Store::new();
         let archetype = ArchetypeBuilder::new().component::<u64>().build();
 
         let entity = registry.create_entity(&archetype);

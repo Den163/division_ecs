@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::{Registry, ArchetypeBuilder, component_types, components_read_query::QueryIterator, ReadQuery};
+    use crate::{Store, ArchetypeBuilder, component_types, components_read_query::QueryIterator, ReadQuery};
 
     #[derive(Debug, PartialEq, Clone, Copy)]
     struct Position {
@@ -15,7 +15,7 @@ mod test {
 
     #[test]
     fn read_query_test() {
-        let mut registry = Registry::new();
+        let mut registry = Store::new();
         let arch0 = ArchetypeBuilder::new()
             .component_types(&component_types!(Position, Rotation))
             .build();

@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::{
-    Entity, Registry, archetype_data_page::ArchetypeDataPage, tuple::{ComponentsTuple, ComponentsRefsTuple}
+    Entity, Store, archetype_data_page::ArchetypeDataPage, tuple::{ComponentsTuple, ComponentsRefsTuple}
 };
 
 pub trait QueryIterator<'a, T> where T: ComponentsRefsTuple<'a> {
@@ -40,7 +40,7 @@ impl<T> ReadQuery<T> where T: ComponentsTuple {
     }
 }
 
-impl<'a, T> QueryIterator<'a, T> for Registry where T: ComponentsRefsTuple<'a> {
+impl<'a, T> QueryIterator<'a, T> for Store where T: ComponentsRefsTuple<'a> {
     fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
@@ -85,7 +85,6 @@ impl<'a, T> QueryIterator<'a, T> for Registry where T: ComponentsRefsTuple<'a> {
 impl<'a, T> Iterator for ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
     type Item = (Entity, T);
     
-    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         let page_views = self.page_views;
         let page_view_count = self.page_views.len();

@@ -3,25 +3,25 @@ use crate::{
     archetype_data_page::ArchetypeDataPage,
     archetype_data_page_view::ArchetypeDataPageView, 
     archetypes_container::ArchetypesContainer,
-    EntitiesContainer, 
+    entities_container::EntitiesContainer, 
     Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
 
 #[derive(Debug)]
-pub struct Registry {
+pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
 }
 
-impl Registry {
-    pub fn new() -> Registry {
+impl Store {
+    pub fn new() -> Store {
         Self::with_capacity(ENTITIES_DEFAULT_CAPACITY)
     }
 
-    pub fn with_capacity(capacity: usize) -> Registry {
-        Registry {
+    pub fn with_capacity(capacity: usize) -> Store {
+        Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
         }
