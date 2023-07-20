@@ -19,7 +19,7 @@ pub mod macros;
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;
 pub use component_type::ComponentType;
-pub use components_read_query::ComponentsReadQuery;
+pub use components_read_query::ReadQuery;
 pub use components_read_query::QueryIterator;
 pub use entity::Entity;
 pub use registry::Registry;

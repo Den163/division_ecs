@@ -1,4 +1,4 @@
-use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ComponentsReadQuery, QueryIterator};
+use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Registry, ReadQuery, QueryIterator};
 
 struct AosObject {
     position: Position,
@@ -47,7 +47,7 @@ pub fn main() {
     let aos_result = iterate_oop(&aos_data);
     println!("Array of structs result: {aos_result}");
 
-    let mut query = create_query(&registry);
+    let mut query = create_query();
 
     warmup_ecs(&registry, &mut query);
 
@@ -76,12 +76,12 @@ fn create_data_arrays() -> Vec<Box<AosObject>> {
 }
 
 #[inline(never)]
-fn create_query(registry: &Registry) -> ComponentsReadQuery<(Position, Rotation, MovingUnit)> {
-    registry.read_query::<(Position, Rotation, MovingUnit)>()
+fn create_query() -> ReadQuery<(Position, Rotation, MovingUnit)> {
+    ReadQuery::<(Position, Rotation, MovingUnit)>::new()
 }
 
 #[inline(never)]
-fn warmup_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, Rotation, MovingUnit)>) {
+fn warmup_ecs(registry: &Registry, query: &mut ReadQuery<(Position, Rotation, MovingUnit)>) {
     let mut result = 0u32;
 
     for (e, (_, _, _)) in registry.iter(query) {
@@ -106,7 +106,7 @@ fn populate_ecs(registry: &mut Registry, data: &Vec<Box<AosObject>>) {
 }
 
 #[inline(never)]
-fn iterate_ecs(registry: &Registry, query: &mut ComponentsReadQuery<(Position, Rotation, MovingUnit)>) -> f32 {
+fn iterate_ecs(registry: &Registry, query: &mut ReadQuery<(Position, Rotation, MovingUnit)>) -> f32 {
     let mut result = 0.;
     let mut counter = 0;
 

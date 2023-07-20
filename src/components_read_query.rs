@@ -5,16 +5,16 @@ use crate::{
 };
 
 pub trait QueryIterator<'a, T> where T: ComponentsRefsTuple<'a> {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ComponentsReadQuery<T::Components>) -> ComponentsReadQueryIter<'a, T>;
+    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T>;
 }
 
-pub struct ComponentsReadQuery<T> where T: ComponentsTuple {
+pub struct ReadQuery<T> where T: ComponentsTuple {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
     _phantom_: PhantomData<T>
 }
 
-pub struct ComponentsReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
+pub struct ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
     page_views: &'a [PageIterView],
     components_offsets: &'a [<T::Components as ComponentsTuple>::OffsetsTuple],
     entities_versions: &'a [u32],
@@ -30,9 +30,9 @@ struct PageIterView {
     components_offsets_index: usize
 }
 
-impl Registry {
-    pub fn read_query<T>(&self) -> ComponentsReadQuery<T> where T: ComponentsTuple {
-        ComponentsReadQuery {
+impl<T> ReadQuery<T> where T: ComponentsTuple {
+    pub fn new() -> Self {
+        ReadQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
             _phantom_: PhantomData::<T>::default()
@@ -41,14 +41,14 @@ impl Registry {
 }
 
 impl<'a, T> QueryIterator<'a, T> for Registry where T: ComponentsRefsTuple<'a> {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ComponentsReadQuery<T::Components>) -> ComponentsReadQueryIter<'a, T> {
+    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
         let layouts = arch_container.get_layouts();
         let pages = arch_container.get_pages();
 
-        query.components_offsets.clear();
         query.page_views.clear();
+        query.components_offsets.clear();
 
         for (arch_idx, arch) in archetypes.into_iter().enumerate() {
             if T::Components::is_archetype_include_types(arch) == false {
@@ -71,7 +71,7 @@ impl<'a, T> QueryIterator<'a, T> for Registry where T: ComponentsRefsTuple<'a> {
             }
         }
 
-        ComponentsReadQueryIter {
+        ReadQueryIter {
             _phantom_: PhantomData::default(),
             current_page_view_index: 0,
             current_entity_index: 0,
@@ -82,7 +82,7 @@ impl<'a, T> QueryIterator<'a, T> for Registry where T: ComponentsRefsTuple<'a> {
     }
 }
 
-impl<'a, T> Iterator for ComponentsReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
+impl<'a, T> Iterator for ReadQueryIter<'a, T> where T: ComponentsRefsTuple<'a> {
     type Item = (Entity, T);
     
     #[inline(always)]
