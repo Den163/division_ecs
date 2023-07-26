@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::{
     archetype_data_page::ArchetypeDataPage,
     tuple::ComponentsTuple,
@@ -19,7 +17,6 @@ where
 {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
-    _phantom_: PhantomData<T>,
 }
 
 pub struct ComponentsQueryIter<'a, T>
@@ -32,8 +29,6 @@ where
 
     current_page_view_index: usize,
     current_entity_index: usize,
-
-    _phantom_: PhantomData<T>,
 }
 
 struct PageIterView {
@@ -49,7 +44,6 @@ where
         ComponentsQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
-            _phantom_: PhantomData::<T>::default(),
         }
     }
 }
@@ -94,7 +88,6 @@ where
         }
 
         ComponentsQueryIter {
-            _phantom_: PhantomData::default(),
             current_page_view_index: 0,
             current_entity_index: 0,
             components_offsets: &query.components_offsets,
