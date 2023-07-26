@@ -6,6 +6,7 @@ pub trait ComponentsTuple {
     type OffsetsTuple;
     type RefsTuple<'a>;
     type MutRefsTuple<'a>;
+    const CHECK_ARCHETYPE: bool;
 
     fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple;
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
@@ -29,6 +30,7 @@ macro_rules! components_tuple_impl {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
             type RefsTuple<'a> = ($(&'a $T,)*);
             type MutRefsTuple<'a> = ($(&'a mut $T,)*);
+            const CHECK_ARCHETYPE: bool = true;
 
             #[inline]
             fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
@@ -95,3 +97,24 @@ components_tuple_impl!(T0, T1, T2, T3);
 components_tuple_impl!(T0, T1, T2);
 components_tuple_impl!(T0, T1);
 components_tuple_impl!(T0);
+
+impl ComponentsTuple for () {
+    type OffsetsTuple = ();
+    type RefsTuple<'a> = ();
+    type MutRefsTuple<'a> = ();
+    const CHECK_ARCHETYPE: bool = false;
+
+    #[inline(always)]
+    fn is_archetype_include_types(_: &Archetype) -> bool { 
+        true 
+    }
+
+    #[inline(always)]
+    fn get_offsets(_: &Archetype, _: *const usize) -> Self::OffsetsTuple { }
+
+    #[inline(always)]
+    fn get_refs<'a>(_: &'a ArchetypeDataPage, _: usize, _: &Self::OffsetsTuple) -> Self::RefsTuple<'a> { }
+
+    #[inline(always)]
+    fn get_refs_mut<'a>(_: &'a ArchetypeDataPage,  _: usize, _: &Self::OffsetsTuple) -> Self::MutRefsTuple<'a> {}
+}
