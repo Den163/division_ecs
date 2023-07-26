@@ -6,11 +6,11 @@ use crate::{
     Entity, Store,
 };
 
-pub trait QueryIterator<'a, T>
+pub trait QueryIntoIter<T>
 where
     T: ComponentsTuple,
 {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T>;
+    fn into_iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T>;
 }
 
 pub struct ComponentsQuery<T>
@@ -54,11 +54,11 @@ where
     }
 }
 
-impl<'a, T> QueryIterator<'a, T> for Store
+impl<T> QueryIntoIter<T> for Store
 where
     T: ComponentsTuple,
 {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T> {
+    fn into_iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
         let layouts = arch_container.get_layouts();

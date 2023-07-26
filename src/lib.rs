@@ -20,6 +20,6 @@ pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;
 pub use component_type::ComponentType;
 pub use components_query::ComponentsQuery;
-pub use components_query::QueryIterator;
+pub use components_query::QueryIntoIter;
 pub use entity::Entity;
 pub use store::Store;

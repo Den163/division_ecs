@@ -1,4 +1,4 @@
-use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Store, ComponentsQuery, QueryIterator};
+use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Store, ComponentsQuery, QueryIntoIter};
 
 struct AosObject {
     position: Position,
@@ -84,7 +84,7 @@ fn create_query() -> ComponentsQuery<(Position, Rotation, MovingUnit)> {
 fn warmup_ecs(registry: &Store, query: &mut ComponentsQuery<(Position, Rotation, MovingUnit)>) {
     let mut result = 0u32;
 
-    for (e, (_, _, _)) in registry.iter(query) {
+    for (e, (_, _, _)) in registry.into_iter(query) {
         result = result.wrapping_add(e.id());
     }
 
@@ -110,7 +110,7 @@ fn iterate_ecs(registry: &Store, query: &mut ComponentsQuery<(Position, Rotation
     let mut result = 0.;
     let mut counter = 0;
 
-    for (_, (pos, rot, moving_unit)) in registry.iter(query) {
+    for (_, (pos, rot, moving_unit)) in registry.into_iter(query) {
         result += test_op(pos, rot, moving_unit);
         counter += 1;
     }
