@@ -5,6 +5,7 @@ use crate::{archetype_data_page::ArchetypeDataPage, Archetype, type_ids};
 pub trait ComponentsTuple {
     type OffsetsTuple;
     type RefsTuple<'a>;
+    type MutRefsTuple<'a>;
 
     fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple;
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
@@ -14,6 +15,12 @@ pub trait ComponentsTuple {
         entity_index: usize, 
         offsets: &Self::OffsetsTuple
     ) -> Self::RefsTuple<'a>;
+
+    fn get_refs_mut<'a>(
+        page: &'a ArchetypeDataPage, 
+        entity_index: usize, 
+        offsets: &Self::OffsetsTuple
+    ) -> Self::MutRefsTuple<'a>;
 }
 
 macro_rules! components_tuple_impl {
@@ -21,6 +28,7 @@ macro_rules! components_tuple_impl {
         impl<$($T: 'static,)*> ComponentsTuple for ($($T,)*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
             type RefsTuple<'a> = ($(&'a $T,)*);
+            type MutRefsTuple<'a> = ($(&'a mut $T,)*);
 
             #[inline]
             fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
@@ -51,12 +59,28 @@ macro_rules! components_tuple_impl {
                     )*
                 )}
             }
+
+            #[inline(always)]
+            fn get_refs_mut<'a>(
+                page: &'a ArchetypeDataPage, 
+                entity_index: usize, 
+                ($( paste!([<$T:lower>]) ,) *): &<($($T,)*) as ComponentsTuple>::OffsetsTuple
+            ) -> Self::MutRefsTuple<'a> {
+                unsafe {(
+                    $( 
+                        &mut *(
+                            page.get_component_data_ptr_mut(
+                                entity_index, *paste!{ [<$T:lower>] } , 
+                                std::mem::size_of::<$T>()
+                            ) as *mut $T
+                        ), 
+                    )*
+                )}
+            }
         }
     };
 
     (@type_to_usize, $T: tt) => { usize };
-
-    (@tuple_element, $T: ident) => { paste! { [<$T:lower>] } };
 }
 
 components_tuple_impl!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
