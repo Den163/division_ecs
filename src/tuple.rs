@@ -4,25 +4,23 @@ use crate::{archetype_data_page::ArchetypeDataPage, Archetype, type_ids};
 
 pub trait ComponentsTuple {
     type OffsetsTuple;
+    type RefsTuple<'a>;
 
     fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple;
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
-}
 
-pub trait ComponentsRefsTuple<'a> where Self::Components : ComponentsTuple {
-    type Components;
-
-    fn get_refs(
+    fn get_refs<'a>(
         page: &'a ArchetypeDataPage, 
         entity_index: usize, 
-        offsets: &<Self::Components as ComponentsTuple>::OffsetsTuple
-    ) -> Self;
+        offsets: &Self::OffsetsTuple
+    ) -> Self::RefsTuple<'a>;
 }
 
 macro_rules! components_tuple_impl {
     ($($T:ident),*) => {
         impl<$($T: 'static,)*> ComponentsTuple for ($($T,)*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
+            type RefsTuple<'a> = ($(&'a $T,)*);
 
             #[inline]
             fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
@@ -35,19 +33,22 @@ macro_rules! components_tuple_impl {
             fn is_archetype_include_types(archetype: &Archetype) -> bool {
                 archetype.is_include_ids(&type_ids!($($T),*))
             }
-        }
-
-        impl<'a, $($T: 'static,)*> ComponentsRefsTuple<'a> for ($(&'a $T,)*) {
-            type Components = ($($T,)*);
 
             #[inline(always)]
-            fn get_refs(
+            fn get_refs<'a>(
                 page: &'a ArchetypeDataPage, 
                 entity_index: usize, 
                 ($( paste!([<$T:lower>]) ,) *): &<($($T,)*) as ComponentsTuple>::OffsetsTuple
-            ) -> Self {
+            ) -> Self::RefsTuple<'a> {
                 unsafe {(
-                    $( &*(page.get_component_data_ptr(entity_index, *paste!{ [<$T:lower>] } , std::mem::size_of::<$T>()) as *const $T), )*
+                    $( 
+                        &*(
+                            page.get_component_data_ptr(
+                                entity_index, *paste!{ [<$T:lower>] } , 
+                                std::mem::size_of::<$T>()
+                            ) as *const $T
+                        ), 
+                    )*
                 )}
             }
         }

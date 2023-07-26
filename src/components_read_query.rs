@@ -2,15 +2,15 @@ use std::marker::PhantomData;
 
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    tuple::{ComponentsRefsTuple, ComponentsTuple},
+    tuple::ComponentsTuple,
     Entity, Store,
 };
 
 pub trait QueryIterator<'a, T>
 where
-    T: ComponentsRefsTuple<'a>,
+    T: ComponentsTuple,
 {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T>;
+    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T>) -> QueryIter<'a, T>;
 }
 
 pub struct ReadQuery<T>
@@ -22,12 +22,12 @@ where
     _phantom_: PhantomData<T>,
 }
 
-pub struct ReadQueryIter<'a, T>
+pub struct QueryIter<'a, T>
 where
-    T: ComponentsRefsTuple<'a>,
+    T: ComponentsTuple,
 {
     page_views: &'a [PageIterView],
-    components_offsets: &'a [<T::Components as ComponentsTuple>::OffsetsTuple],
+    components_offsets: &'a [T::OffsetsTuple],
     entities_versions: &'a [u32],
 
     current_page_view_index: usize,
@@ -56,9 +56,9 @@ where
 
 impl<'a, T> QueryIterator<'a, T> for Store
 where
-    T: ComponentsRefsTuple<'a>,
+    T: ComponentsTuple,
 {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T::Components>) -> ReadQueryIter<'a, T> {
+    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T>) -> QueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
         let layouts = arch_container.get_layouts();
@@ -68,14 +68,14 @@ where
         query.components_offsets.clear();
 
         for (arch_idx, arch) in archetypes.into_iter().enumerate() {
-            if T::Components::is_archetype_include_types(arch) == false {
+            if T::is_archetype_include_types(arch) == false {
                 continue;
             }
 
             let offsets = layouts[arch_idx].component_offsets();
             query
                 .components_offsets
-                .push(T::Components::get_offsets(arch, offsets));
+                .push(T::get_offsets(arch, offsets));
 
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
@@ -93,7 +93,7 @@ where
             }
         }
 
-        ReadQueryIter {
+        QueryIter {
             _phantom_: PhantomData::default(),
             current_page_view_index: 0,
             current_entity_index: 0,
@@ -104,11 +104,11 @@ where
     }
 }
 
-impl<'a, T> Iterator for ReadQueryIter<'a, T>
+impl<'a, T> Iterator for QueryIter<'a, T>
 where
-    T: ComponentsRefsTuple<'a>,
+    T: ComponentsTuple,
 {
-    type Item = (Entity, T);
+    type Item = (Entity, T::RefsTuple<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let page_views = self.page_views;
