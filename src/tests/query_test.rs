@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::{Store, ArchetypeBuilder, component_types, components_read_query::QueryIterator, ReadQuery};
+    use crate::{Store, ArchetypeBuilder, component_types, components_query::QueryIterator, ComponentsQuery};
 
     #[derive(Debug, PartialEq, Clone, Copy)]
     struct Position {
@@ -45,7 +45,7 @@ mod test {
         registry.create_entity(&other_arch);
         registry.create_entity(&other_arch);
 
-        let mut query = ReadQuery::<(Position, Rotation)>::new();
+        let mut query = ComponentsQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
         for (e, (pos, rot)) in registry.iter(&mut query) {
             iter_count += 1;

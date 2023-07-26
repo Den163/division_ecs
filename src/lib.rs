@@ -10,7 +10,7 @@ mod entity_in_archetype;
 mod entities_container;
 mod mem_utils;
 mod store;
-mod components_read_query;
+mod components_query;
 mod tests;
 mod tuple;
 
@@ -19,7 +19,7 @@ pub mod macros;
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;
 pub use component_type::ComponentType;
-pub use components_read_query::ReadQuery;
-pub use components_read_query::QueryIterator;
+pub use components_query::ComponentsQuery;
+pub use components_query::QueryIterator;
 pub use entity::Entity;
 pub use store::Store;

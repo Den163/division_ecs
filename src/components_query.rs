@@ -10,10 +10,10 @@ pub trait QueryIterator<'a, T>
 where
     T: ComponentsTuple,
 {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T>) -> QueryIter<'a, T>;
+    fn iter<'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T>;
 }
 
-pub struct ReadQuery<T>
+pub struct ComponentsQuery<T>
 where
     T: ComponentsTuple,
 {
@@ -22,7 +22,7 @@ where
     _phantom_: PhantomData<T>,
 }
 
-pub struct QueryIter<'a, T>
+pub struct ComponentsQueryIter<'a, T>
 where
     T: ComponentsTuple,
 {
@@ -41,12 +41,12 @@ struct PageIterView {
     components_offsets_index: usize,
 }
 
-impl<T> ReadQuery<T>
+impl<T> ComponentsQuery<T>
 where
     T: ComponentsTuple,
 {
     pub fn new() -> Self {
-        ReadQuery {
+        ComponentsQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
             _phantom_: PhantomData::<T>::default(),
@@ -58,7 +58,7 @@ impl<'a, T> QueryIterator<'a, T> for Store
 where
     T: ComponentsTuple,
 {
-    fn iter<'b: 'a>(&'a self, query: &'b mut ReadQuery<T>) -> QueryIter<'a, T> {
+    fn iter<'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
         let layouts = arch_container.get_layouts();
@@ -93,7 +93,7 @@ where
             }
         }
 
-        QueryIter {
+        ComponentsQueryIter {
             _phantom_: PhantomData::default(),
             current_page_view_index: 0,
             current_entity_index: 0,
@@ -104,7 +104,7 @@ where
     }
 }
 
-impl<'a, T> Iterator for QueryIter<'a, T>
+impl<'a, T> Iterator for ComponentsQueryIter<'a, T>
 where
     T: ComponentsTuple,
 {
