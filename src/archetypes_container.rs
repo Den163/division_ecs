@@ -58,7 +58,9 @@ impl ArchetypesContainer {
         let archetype_index = self.reserve_archetype(archetype);
         let pages = &mut self.archetype_to_pages[archetype_index].pages;
 
-        for page_index in pages {
+        // Looking in reverse direction, because there is more probability, that
+        // page with free slots will be located in the end
+        for page_index in pages.into_iter().rev() {
             let page_index = *page_index;
             let page = &mut self.pages[page_index];
             if page.has_free_space() {
