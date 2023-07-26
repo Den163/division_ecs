@@ -1,4 +1,4 @@
-use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Store, ComponentsQuery, QueryIntoIter};
+use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Store, QueryIntoIter, ComponentsReadOnlyQuery};
 
 struct AosObject {
     position: Position,
@@ -76,12 +76,12 @@ fn create_data_arrays() -> Vec<Box<AosObject>> {
 }
 
 #[inline(never)]
-fn create_query() -> ComponentsQuery<(Position, Rotation, MovingUnit)> {
-    ComponentsQuery::<(Position, Rotation, MovingUnit)>::new()
+fn create_query() -> ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)> {
+    ComponentsReadOnlyQuery::<(Position, Rotation, MovingUnit)>::new()
 }
 
 #[inline(never)]
-fn warmup_ecs(registry: &Store, query: &mut ComponentsQuery<(Position, Rotation, MovingUnit)>) {
+fn warmup_ecs(registry: &Store, query: &mut ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)>) {
     let mut result = 0u32;
 
     for (e, (_, _, _)) in registry.into_iter(query) {
@@ -106,7 +106,7 @@ fn populate_ecs(registry: &mut Store, data: &Vec<Box<AosObject>>) {
 }
 
 #[inline(never)]
-fn iterate_ecs(registry: &Store, query: &mut ComponentsQuery<(Position, Rotation, MovingUnit)>) -> f32 {
+fn iterate_ecs(registry: &Store, query: &mut ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)>) -> f32 {
     let mut result = 0.;
     let mut counter = 0;
 

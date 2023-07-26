@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::{Store, ArchetypeBuilder, component_types, components_query::QueryIntoIter, ComponentsQuery};
+    use crate::{Store, ArchetypeBuilder, component_types, components_query::{QueryIntoIter, ComponentsReadOnlyQuery}, ComponentsWriteQuery};
 
     #[derive(Debug, PartialEq, Clone, Copy)]
     struct Position {
@@ -14,8 +14,8 @@ mod test {
     }
 
     #[test]
-    fn read_query_test() {
-        let mut registry = Store::new();
+    fn write_and_read_query_test() {
+        let mut store = Store::new();
         let arch0 = ArchetypeBuilder::new()
             .component_types(&component_types!(Position, Rotation))
             .build();
@@ -30,24 +30,34 @@ mod test {
         ];
         let mut entities = Vec::new();
 
-        for (pos, rot, arch) in &expected_data {
-            let e = registry.create_entity(&arch);
-            entities.push(e);
-            
-            *registry.get_component_ref_mut(e) = *pos;
-            *registry.get_component_ref_mut(e) = *rot;
+        for (_, _, arch) in &expected_data {
+            store.create_entity(arch);
         }
+
+        let mut write_query = ComponentsWriteQuery::<(Position, Rotation)>::new();
+        let mut iter_count = 0;
+        for (e, (pos, rot)) in store.into_iter(&mut write_query) {
+            entities.push(e);
+
+            let (expected_pos, expected_rot, _) =  expected_data[iter_count];
+
+            *pos = expected_pos;
+            *rot = expected_rot;
+
+            iter_count += 1;
+        }
+        assert_eq!(iter_count, expected_data.len());
 
         let other_arch = ArchetypeBuilder::new()
             .component_types(&component_types!(f32, u64))
             .build();
         
-        registry.create_entity(&other_arch);
-        registry.create_entity(&other_arch);
+        store.create_entity(&other_arch);
+        store.create_entity(&other_arch);
 
-        let mut query = ComponentsQuery::<(Position, Rotation)>::new();
+        let mut read_query = ComponentsReadOnlyQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
-        for (e, (pos, rot)) in registry.into_iter(&mut query) {
+        for (e, (pos, rot)) in store.into_iter(&mut read_query) {
             iter_count += 1;
 
             let e_idx = entities.iter().position(|e_check| *e_check == e).unwrap();

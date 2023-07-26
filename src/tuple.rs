@@ -2,6 +2,14 @@ use paste::paste;
 
 use crate::{archetype_data_page::ArchetypeDataPage, Archetype, type_ids};
 
+pub trait EmptyTuple {
+
+}
+
+pub trait NonEmptyTuple {
+    
+}
+
 pub trait ComponentsTuple {
     type OffsetsTuple;
     type RefsTuple<'a>;
@@ -26,6 +34,9 @@ pub trait ComponentsTuple {
 
 macro_rules! components_tuple_impl {
     ($($T:ident),*) => {
+        impl<$($T: 'static,)*> NonEmptyTuple for ($($T,)*) {
+        }
+
         impl<$($T: 'static,)*> ComponentsTuple for ($($T,)*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
             type RefsTuple<'a> = ($(&'a $T,)*);
@@ -97,6 +108,10 @@ components_tuple_impl!(T0, T1, T2, T3);
 components_tuple_impl!(T0, T1, T2);
 components_tuple_impl!(T0, T1);
 components_tuple_impl!(T0);
+
+impl EmptyTuple for () {
+    
+}
 
 impl ComponentsTuple for () {
     type OffsetsTuple = ();

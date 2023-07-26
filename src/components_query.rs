@@ -1,27 +1,27 @@
-use crate::{
-    archetype_data_page::ArchetypeDataPage,
-    tuple::ComponentsTuple,
-    Entity, Store,
-};
+use crate::{archetype_data_page::ArchetypeDataPage, Entity, Store, components_query_access::ComponentsQueryAccess};
 
 pub trait QueryIntoIter<T>
 where
-    T: ComponentsTuple,
+    T: ComponentsQueryAccess
 {
     fn into_iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T>;
 }
 
 pub struct ComponentsQuery<T>
 where
-    T: ComponentsTuple,
+    T: ComponentsQueryAccess
 {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
 }
 
+pub type ComponentsReadWriteQuery<TRead, TWrite> = ComponentsQuery<(TRead, TWrite)>;
+pub type ComponentsReadOnlyQuery<TRead> = ComponentsQuery<(TRead, ())>;
+pub type ComponentsWriteQuery<TWrite> = ComponentsQuery<((), TWrite)>;
+
 pub struct ComponentsQueryIter<'a, T>
 where
-    T: ComponentsTuple,
+    T: ComponentsQueryAccess,
 {
     page_views: &'a [PageIterView],
     components_offsets: &'a [T::OffsetsTuple],
@@ -38,19 +38,16 @@ struct PageIterView {
 
 impl<T> ComponentsQuery<T>
 where
-    T: ComponentsTuple,
+    T: ComponentsQueryAccess
 {
     pub fn new() -> Self {
-        ComponentsQuery {
-            page_views: Vec::new(),
-            components_offsets: Vec::new(),
-        }
+        ComponentsQuery { page_views: Vec::new(), components_offsets: Vec::new() }
     }
 }
 
 impl<T> QueryIntoIter<T> for Store
 where
-    T: ComponentsTuple,
+    T: ComponentsQueryAccess,
 {
     fn into_iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
@@ -99,9 +96,9 @@ where
 
 impl<'a, T> Iterator for ComponentsQueryIter<'a, T>
 where
-    T: ComponentsTuple,
+    T: ComponentsQueryAccess,
 {
-    type Item = (Entity, T::RefsTuple<'a>);
+    type Item = (Entity, T::AccessOutput<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let page_views = self.page_views;
