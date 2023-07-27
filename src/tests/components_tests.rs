@@ -1,3 +1,9 @@
+use crate::Component;
+
+impl Component for f32 {}
+impl Component for u64 {}
+impl Component for u128 {}
+
 #[cfg(test)]
 mod tests {
     use crate::{ArchetypeBuilder, Store};
@@ -45,7 +51,7 @@ mod tests {
             .build();
 
         let entity = store.create_entity(&archetype);
-        store.get_components_refs_mut::<(f32,)>(entity);
+        store.get_components_refs_mut::<f32>(entity);
     }
 
     #[test]
@@ -57,6 +63,6 @@ mod tests {
         let entity = registry.create_entity(&archetype);
         registry.destroy_entity(entity);
 
-        registry.get_components_refs_mut::<(u64,)>(entity);
+        registry.get_components_refs_mut::<u64>(entity);
     }
 }

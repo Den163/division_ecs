@@ -1,6 +1,6 @@
 use paste::paste;
 
-use crate::{archetype_data_page::ArchetypeDataPage, type_ids, Archetype};
+use crate::{archetype_data_page::ArchetypeDataPage, type_ids, Archetype, Component};
 
 pub trait EmptyTuple {}
 pub trait NonEmptyTuple {}
@@ -38,11 +38,13 @@ pub trait ComponentsTuple {
 
 macro_rules! components_tuple_impl {
     ($($T:ident),*) => {
-        impl<$($T: 'static,)*> NonEmptyTuple for ($($T,)*) {
+        #[allow(unused_parens)]
+        impl<$($T: 'static + Component),*> NonEmptyTuple for ($($T),*) {
         }
 
-        impl<$($T: 'static,)*> ComponentsTuple for ($($T,)*) {
-            type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T),)*);
+        #[allow(unused_parens)]
+        impl<$($T: 'static + Component),*> ComponentsTuple for ($($T),*) {
+            type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T)),*);
             type RefsTuple<'a> = ($(&'a $T,)*);
             type MutRefsTuple<'a> = ($(&'a mut $T,)*);
             const CHECK_ARCHETYPE: bool = true;
@@ -50,14 +52,14 @@ macro_rules! components_tuple_impl {
             #[inline]
             fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
                 unsafe {(
-                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap_unchecked()),)*
+                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap_unchecked())),*
                 )}
             }
 
             #[inline]
             fn get_offsets_checked(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
                 unsafe {(
-                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap()),)*
+                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap())),*
                 )}
             }
 
@@ -70,7 +72,7 @@ macro_rules! components_tuple_impl {
             fn get_refs<'a>(
                 page: &'a ArchetypeDataPage,
                 entity_index: usize,
-                ($( paste!([<$T:lower>]) ,) *): &<($($T,)*) as ComponentsTuple>::OffsetsTuple
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentsTuple>::OffsetsTuple
             ) -> Self::RefsTuple<'a> {
                 unsafe {(
                     $(
@@ -88,7 +90,7 @@ macro_rules! components_tuple_impl {
             fn get_refs_mut<'a>(
                 page: &'a ArchetypeDataPage,
                 entity_index: usize,
-                ($( paste!([<$T:lower>]) ,) *): &<($($T,)*) as ComponentsTuple>::OffsetsTuple
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentsTuple>::OffsetsTuple
             ) -> Self::MutRefsTuple<'a> {
                 unsafe {(
                     $(

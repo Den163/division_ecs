@@ -1,5 +1,5 @@
 use division_ecs::{
-    component_types, ArchetypeBuilder, ComponentType, ComponentsReadOnlyQuery, QueryIntoIter, Store,
+    component_types, ArchetypeBuilder, ComponentType, ComponentsReadOnlyQuery, QueryIntoIter, Store, Component
 };
 
 struct AosObject {
@@ -9,15 +9,22 @@ struct AosObject {
     dirty_data: DirtyData,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 struct Position {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 struct Rotation {
     pub angle: f32,
+}
+
+#[derive(Component, Clone, Copy)]
+struct MovingUnit {
+    pub _speed: f32,
+    pub attack: f32,
+    pub hit_rate: f32,
 }
 
 #[derive(Clone, Copy)]
@@ -26,13 +33,6 @@ struct DirtyData {
     pub _y: f32,
     pub _z: f32,
     pub w: f32,
-}
-
-#[derive(Clone, Copy)]
-struct MovingUnit {
-    pub _speed: f32,
-    pub attack: f32,
-    pub hit_rate: f32,
 }
 
 pub const ENTITIES_COUNT: usize = 20_000_000;

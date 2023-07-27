@@ -13,3 +13,4 @@ rand = "0.8.5"
 
 [dependencies]
 paste = "1.0.14"
+division_ecs_attributes = { path = "./division_ecs_attributes" }

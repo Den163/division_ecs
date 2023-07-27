@@ -4,6 +4,7 @@ mod archetype_data_layout;
 mod archetype_data_page;
 mod archetype_data_page_view;
 mod archetypes_container;
+mod component;
 mod component_type;
 mod components_query_access;
 mod entity;
@@ -19,6 +20,7 @@ pub mod macros;
 
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;
+pub use component::Component;
 pub use component_type::ComponentType;
 pub use components_query::{
     ComponentsQuery, 

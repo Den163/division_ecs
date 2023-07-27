@@ -1,14 +1,21 @@
 #[cfg(test)]
 mod test {
-    use crate::{Store, ArchetypeBuilder, component_types, components_query::{QueryIntoIter, ComponentsReadOnlyQuery}, ComponentsWriteQuery};
+    use crate::{
+        Store, 
+        ArchetypeBuilder, 
+        component_types, 
+        components_query::{QueryIntoIter, ComponentsReadOnlyQuery}, 
+        ComponentsWriteQuery, 
+        Component
+    };
 
-    #[derive(Debug, PartialEq, Clone, Copy)]
+    #[derive(Debug, PartialEq, Component, Clone, Copy)]
     struct Position {
         x: f32,
         y: f32,
     }
 
-    #[derive(Debug, PartialEq, Clone, Copy)]
+    #[derive(Debug, PartialEq, Component, Clone, Copy)]
     struct Rotation {
         angle: f64
     }
