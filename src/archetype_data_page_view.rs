@@ -1,7 +1,6 @@
 use crate::{
-    archetype_data_layout::ArchetypeDataLayout, 
-    archetype_data_page::ArchetypeDataPage, 
-    Archetype,
+    archetype_data_layout::ArchetypeDataLayout, archetype_data_page::ArchetypeDataPage,
+    tuple::ComponentsTuple, Archetype,
 };
 
 #[derive(Clone, Copy)]
@@ -12,37 +11,19 @@ pub(crate) struct ArchetypeDataPageView<'a> {
 }
 
 impl<'a> ArchetypeDataPageView<'a> {
-    pub fn get_component_offset<T: 'static>(&self) -> usize {
-        let component_index = self.archetype.find_component_index(
-            std::any::TypeId::of::<T>()
-        );
-        assert!(
-            component_index.is_some(),
-            "There is no component {} in the given archetype",
-            std::any::type_name::<T>()
-        );
-
-        unsafe {
-            let component_index = component_index.unwrap_unchecked();
-            *self.layout.component_offsets().add(component_index)
-        }
+    pub fn get_components_refs<T>(&self, page_entity_index: usize) -> T::RefsTuple<'a>
+    where
+        T: ComponentsTuple,
+    {
+        let offsets = T::get_offsets_checked(&self.archetype, self.layout.component_offsets());
+        T::get_refs(self.page, page_entity_index, &offsets)
     }
 
-    #[inline(always)]
-    pub fn get_component_ptr<T: 'static>(&self, page_entity_index: usize) -> *const T {
-        self.page.get_component_data_ptr(
-            page_entity_index, 
-            self.get_component_offset::<T>(), 
-            std::mem::size_of::<T>()
-        ) as *const T
-    }
-
-    #[inline(always)]    
-    pub fn get_component_ptr_mut<T: 'static>(&self, page_entity_index: usize) -> *mut T {
-        self.page.get_component_data_ptr_mut(
-            page_entity_index, 
-            self.get_component_offset::<T>(), 
-            std::mem::size_of::<T>()
-        ) as *mut T
+    pub fn get_components_refs_mut<T>(&self, page_entity_index: usize) -> T::MutRefsTuple<'a>
+    where
+        T: ComponentsTuple,
+    {
+        let offsets = T::get_offsets_checked(&self.archetype, self.layout.component_offsets());
+        T::get_refs_mut(self.page, page_entity_index, &offsets)
     }
 }

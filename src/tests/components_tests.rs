@@ -5,7 +5,7 @@ mod tests {
     #[test]
     fn registry_set_value_for_entity_as_expected() {
         let entities_capacity = 255;
-        let mut registry = Store::with_capacity(entities_capacity);
+        let mut store = Store::with_capacity(entities_capacity);
         let archetype = ArchetypeBuilder::new()
             .component::<u64>()
             .component::<u128>()
@@ -20,38 +20,32 @@ mod tests {
         let mut entities = Vec::new();
 
         for i in 0..entities_capacity {
-            let entity = registry.create_entity(&archetype);
+            let entity = store.create_entity(&archetype);
             entities.push(entity);
 
-            {
-                *registry.get_component_ref_mut(entity) = u64_values[i];
-            }
-
-            {
-                *registry.get_component_ref_mut(entity) = u128_values[i];
-            }
+            let (u64_v, u128_v) = store.get_components_refs_mut::<(u64, u128)>(entity);
+            (*u64_v, *u128_v) = (u64_values[i], u128_values[i]);
         }
 
         for i in 0..entities_capacity {
             let entity = entities[i];
 
-            assert_eq!(u64_values[i], *registry.get_component_ref(entity));
-            assert_eq!(u128_values[i], *registry.get_component_ref(entity));
+            let (&actual_u64, &actual_u128) = store.get_components_refs::<(u64, u128)>(entity);
+            assert_eq!((u64_values[i], u128_values[i]), (actual_u64, actual_u128));
         }
     }
 
     #[test]
     #[should_panic]
     fn registry_get_component_ref_mut_panics_if_component_doesnt_exist() {
-        let mut registry = Store::new();
+        let mut store = Store::new();
         let archetype = ArchetypeBuilder::new()
             .component::<u64>()
             .component::<u128>()
             .build();
 
-        let entity = registry.create_entity(&archetype);
-
-        registry.get_component_ref_mut::<f32>(entity);
+        let entity = store.create_entity(&archetype);
+        store.get_components_refs_mut::<(f32,)>(entity);
     }
 
     #[test]
@@ -63,6 +57,6 @@ mod tests {
         let entity = registry.create_entity(&archetype);
         registry.destroy_entity(entity);
 
-        registry.get_component_ref_mut::<u64>(entity);
+        registry.get_components_refs_mut::<(u64,)>(entity);
     }
 }
