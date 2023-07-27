@@ -1,15 +1,21 @@
-use crate::{archetype_data_page::ArchetypeDataPage, Entity, Store, components_query_access::ComponentsQueryAccess};
+use crate::{
+    archetype_data_page::ArchetypeDataPage, components_query_access::ComponentsQueryAccess, Entity,
+    Store,
+};
 
 pub trait QueryIntoIter<T>
 where
-    T: ComponentsQueryAccess
+    T: ComponentsQueryAccess,
 {
-    fn into_iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T>;
+    fn into_iter<'a, 'b: 'a>(
+        &'a self,
+        query: &'b mut ComponentsQuery<T>,
+    ) -> ComponentsQueryIter<'a, T>;
 }
 
 pub struct ComponentsQuery<T>
 where
-    T: ComponentsQueryAccess
+    T: ComponentsQueryAccess,
 {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
@@ -38,10 +44,13 @@ struct PageIterView {
 
 impl<T> ComponentsQuery<T>
 where
-    T: ComponentsQueryAccess
+    T: ComponentsQueryAccess,
 {
     pub fn new() -> Self {
-        ComponentsQuery { page_views: Vec::new(), components_offsets: Vec::new() }
+        ComponentsQuery {
+            page_views: Vec::new(),
+            components_offsets: Vec::new(),
+        }
     }
 }
 
@@ -49,7 +58,10 @@ impl<T> QueryIntoIter<T> for Store
 where
     T: ComponentsQueryAccess,
 {
-    fn into_iter<'a, 'b: 'a>(&'a self, query: &'b mut ComponentsQuery<T>) -> ComponentsQueryIter<'a, T> {
+    fn into_iter<'a, 'b: 'a>(
+        &'a self,
+        query: &'b mut ComponentsQuery<T>,
+    ) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
         let layouts = arch_container.get_layouts();
@@ -64,9 +76,7 @@ where
             }
 
             let offsets = layouts[arch_idx].component_offsets();
-            query
-                .components_offsets
-                .push(T::get_offsets(arch, offsets));
+            query.components_offsets.push(T::get_offsets(arch, offsets));
 
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
@@ -129,7 +139,9 @@ where
             let curr_entity_idx = self.current_entity_index;
             let id = *entities_ids.get_unchecked(curr_entity_idx);
             let version = *self.entities_versions.get_unchecked(id as usize);
-            let offsets = self.components_offsets.get_unchecked(curr_page_view.components_offsets_index);
+            let offsets = self
+                .components_offsets
+                .get_unchecked(curr_page_view.components_offsets_index);
 
             self.current_entity_index += 1;
 

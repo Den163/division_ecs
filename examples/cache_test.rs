@@ -1,4 +1,6 @@
-use division_ecs::{component_types, ArchetypeBuilder, ComponentType, Store, QueryIntoIter, ComponentsReadOnlyQuery};
+use division_ecs::{
+    component_types, ArchetypeBuilder, ComponentType, ComponentsReadOnlyQuery, QueryIntoIter, Store,
+};
 
 struct AosObject {
     position: Position,
@@ -23,14 +25,14 @@ struct DirtyData {
     pub _x: f32,
     pub _y: f32,
     pub _z: f32,
-    pub _w: f32
+    pub w: f32,
 }
 
 #[derive(Clone, Copy)]
 struct MovingUnit {
     pub _speed: f32,
     pub attack: f32,
-    pub hit_rate: f32
+    pub hit_rate: f32,
 }
 
 pub const ENTITIES_COUNT: usize = 20_000_000;
@@ -54,8 +56,7 @@ pub fn main() {
     let ecs_result = iterate_ecs(&registry, &mut query);
     println!("Ecs result: {ecs_result}");
 
-
-    let last_w = aos_data[ENTITIES_COUNT - 1].dirty_data._w;
+    let last_w = aos_data[ENTITIES_COUNT - 1].dirty_data.w;
     println!("Last dirty data w: {last_w}");
 }
 
@@ -65,10 +66,24 @@ fn create_data_arrays() -> Vec<Box<AosObject>> {
 
     for _ in 0..ENTITIES_COUNT {
         data.push(Box::new(AosObject {
-            position: Position { x: rand::random(), y: rand::random() },
-            rotation: Rotation { angle: rand::random() },
-            moving_unit: MovingUnit { _speed: rand::random(), attack: rand::random(), hit_rate: rand::random() },
-            dirty_data: DirtyData { _x: rand::random(), _y: rand::random(), _z: rand::random(), _w: rand::random() }
+            position: Position {
+                x: rand::random(),
+                y: rand::random(),
+            },
+            rotation: Rotation {
+                angle: rand::random(),
+            },
+            moving_unit: MovingUnit {
+                _speed: rand::random(),
+                attack: rand::random(),
+                hit_rate: rand::random(),
+            },
+            dirty_data: DirtyData {
+                _x: rand::random(),
+                _y: rand::random(),
+                _z: rand::random(),
+                w: rand::random(),
+            },
         }));
     }
 
@@ -81,7 +96,10 @@ fn create_query() -> ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)> {
 }
 
 #[inline(never)]
-fn warmup_ecs(registry: &Store, query: &mut ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)>) {
+fn warmup_ecs(
+    registry: &Store,
+    query: &mut ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)>,
+) {
     let mut result = 0u32;
 
     for (e, (_, _, _)) in registry.into_iter(query) {
@@ -106,7 +124,10 @@ fn populate_ecs(registry: &mut Store, data: &Vec<Box<AosObject>>) {
 }
 
 #[inline(never)]
-fn iterate_ecs(registry: &Store, query: &mut ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)>) -> f32 {
+fn iterate_ecs(
+    registry: &Store,
+    query: &mut ComponentsReadOnlyQuery<(Position, Rotation, MovingUnit)>,
+) -> f32 {
     let mut result = 0.;
     let mut counter = 0;
 

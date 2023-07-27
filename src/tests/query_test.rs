@@ -24,10 +24,11 @@ mod test {
             .component_types(&component_types!(Position, Rotation, u64))
             .build();
 
-        let expected_data = vec![
+        let expected_data = [
             (Position { x: 10., y: 20. }, Rotation { angle: 90. }, arch0 ), 
             (Position { x: 0., y: 20. }, Rotation { angle: 180. }, arch1 )
         ];
+
         let mut entities = Vec::new();
 
         for (_, _, arch) in &expected_data {
