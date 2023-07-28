@@ -55,6 +55,10 @@ impl ArchetypeDataPage {
 
     pub(crate) fn remove_entity_id(&mut self, id: u32) {
         let index = self.get_entity_index_by_id(id);
+        self.remove_entity_at_index(index);
+    }
+
+    pub(crate) fn remove_entity_at_index(&mut self, index: usize) {
         self.entities_ids.remove(index);
     }
 

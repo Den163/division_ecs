@@ -1,7 +1,7 @@
 use crate::{
     archetype::Archetype, archetype_data_page::ArchetypeDataPage,
     archetype_data_page_view::ArchetypeDataPageView, archetypes_container::ArchetypesContainer,
-    entities_container::EntitiesContainer, tuple::{ComponentsTuple, NonEmptyTuple}, Entity,
+    entities_container::EntitiesContainer, tuple::ComponentsTuple, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -59,7 +59,7 @@ impl Store {
     #[inline(always)]
     pub fn get_components_refs<'a, T>(&'a self, entity: Entity) -> T::RefsTuple<'a>
     where
-        T: ComponentsTuple + NonEmptyTuple,
+        T: ComponentsTuple,
     {
         assert!(self.is_alive(entity));
 
@@ -72,7 +72,7 @@ impl Store {
     #[inline(always)]
     pub fn get_components_refs_mut<'a, T>(&'a self, entity: Entity) -> T::MutRefsTuple<'a>
     where
-        T: ComponentsTuple + NonEmptyTuple,
+        T: ComponentsTuple,
     {
         assert!(self.is_alive(entity));
 

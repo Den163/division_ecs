@@ -3,7 +3,6 @@ mod test {
     use crate::{
         Store, 
         ArchetypeBuilder, 
-        component_types, 
         components_query::{QueryIntoIter, ComponentsReadOnlyQuery}, 
         ComponentsWriteQuery, 
         Component
@@ -24,11 +23,11 @@ mod test {
     fn write_and_read_query_test() {
         let mut store = Store::new();
         let arch0 = ArchetypeBuilder::new()
-            .component_types(&component_types!(Position, Rotation))
+            .include_components::<(Position, Rotation)>()
             .build();
 
         let arch1 = ArchetypeBuilder::new()
-            .component_types(&component_types!(Position, Rotation, u64))
+            .include_components::<(Position, Rotation, u64)>()
             .build();
 
         let expected_data = [
@@ -57,7 +56,7 @@ mod test {
         assert_eq!(iter_count, expected_data.len());
 
         let other_arch = ArchetypeBuilder::new()
-            .component_types(&component_types!(f32, u64))
+            .include_components::<(f32, u64)>()
             .build();
         
         store.create_entity(&other_arch);

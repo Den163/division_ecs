@@ -1,20 +1,16 @@
 use paste::paste;
 
-use crate::{archetype_data_page::ArchetypeDataPage, type_ids, Archetype, Component};
-
-pub trait EmptyTuple {}
-pub trait NonEmptyTuple {}
+use crate::{
+    archetype_data_page::ArchetypeDataPage, type_ids, Archetype, Component,
+};
 
 pub trait ComponentsTuple {
     type OffsetsTuple;
     type RefsTuple<'a>;
     type MutRefsTuple<'a>;
-    const CHECK_ARCHETYPE: bool;
+    const COMPONENT_COUNT: usize;
 
-    fn get_offsets(
-        archetype: &Archetype, 
-        layout_offsets: *const usize
-    ) -> Self::OffsetsTuple;
+    fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple;
 
     fn get_offsets_checked(
         archetype: &Archetype,
@@ -39,15 +35,11 @@ pub trait ComponentsTuple {
 macro_rules! components_tuple_impl {
     ($($T:ident),*) => {
         #[allow(unused_parens)]
-        impl<$($T: 'static + Component),*> NonEmptyTuple for ($($T),*) {
-        }
-
-        #[allow(unused_parens)]
         impl<$($T: 'static + Component),*> ComponentsTuple for ($($T),*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T)),*);
             type RefsTuple<'a> = ($(&'a $T,)*);
             type MutRefsTuple<'a> = ($(&'a mut $T,)*);
-            const CHECK_ARCHETYPE: bool = true;
+            const COMPONENT_COUNT: usize = 0;
 
             #[inline]
             fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
@@ -104,6 +96,8 @@ macro_rules! components_tuple_impl {
                 )}
             }
         }
+
+        $crate::archetype_builder_tuple_impl!($($T),*);
     };
 
     (@type_to_usize, $T: tt) => { usize };
@@ -121,39 +115,3 @@ components_tuple_impl!(T0, T1, T2, T3);
 components_tuple_impl!(T0, T1, T2);
 components_tuple_impl!(T0, T1);
 components_tuple_impl!(T0);
-
-impl EmptyTuple for () {}
-
-impl ComponentsTuple for () {
-    type OffsetsTuple = ();
-    type RefsTuple<'a> = ();
-    type MutRefsTuple<'a> = ();
-    const CHECK_ARCHETYPE: bool = false;
-
-    #[inline(always)]
-    fn is_archetype_include_types(_: &Archetype) -> bool {
-        true
-    }
-
-    #[inline(always)]
-    fn get_offsets(_: &Archetype, _: *const usize) -> Self::OffsetsTuple {}
-
-    #[inline(always)]
-    fn get_offsets_checked(_: &Archetype, _: *const usize) -> Self::OffsetsTuple {}
-
-    #[inline(always)]
-    fn get_refs<'a>(
-        _: &'a ArchetypeDataPage,
-        _: usize,
-        _: &Self::OffsetsTuple,
-    ) -> Self::RefsTuple<'a> {
-    }
-
-    #[inline(always)]
-    fn get_refs_mut<'a>(
-        _: &'a ArchetypeDataPage,
-        _: usize,
-        _: &Self::OffsetsTuple,
-    ) -> Self::MutRefsTuple<'a> {
-    }
-}

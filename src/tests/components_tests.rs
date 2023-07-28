@@ -13,8 +13,7 @@ mod tests {
         let entities_capacity = 255;
         let mut store = Store::with_capacity(entities_capacity);
         let archetype = ArchetypeBuilder::new()
-            .component::<u64>()
-            .component::<u128>()
+            .include_components::<(u64, u128)>()
             .build();
 
         let u64_values: Vec<u64> = (0..entities_capacity).map(|v| v as u64).collect();
@@ -46,8 +45,7 @@ mod tests {
     fn registry_get_component_ref_mut_panics_if_component_doesnt_exist() {
         let mut store = Store::new();
         let archetype = ArchetypeBuilder::new()
-            .component::<u64>()
-            .component::<u128>()
+            .include_components::<(u64, u128)>()
             .build();
 
         let entity = store.create_entity(&archetype);
@@ -58,7 +56,7 @@ mod tests {
     #[should_panic]
     fn registry_get_component_ref_mut_panics_if_entity_doesnt_alive() {
         let mut registry = Store::new();
-        let archetype = ArchetypeBuilder::new().component::<u64>().build();
+        let archetype = ArchetypeBuilder::new().include_components::<u64>().build();
 
         let entity = registry.create_entity(&archetype);
         registry.destroy_entity(entity);

@@ -1,5 +1,5 @@
 use division_ecs::{
-    component_types, ArchetypeBuilder, ComponentType, ComponentsReadOnlyQuery, QueryIntoIter, Store, Component
+    ArchetypeBuilder, ComponentsReadOnlyQuery, QueryIntoIter, Store, Component
 };
 
 struct AosObject {
@@ -112,7 +112,7 @@ fn warmup_ecs(
 #[inline(never)]
 fn populate_ecs(registry: &mut Store, data: &Vec<Box<AosObject>>) {
     let pos_rot_arch = ArchetypeBuilder::new()
-        .component_types(&component_types!(Position, Rotation, MovingUnit))
+        .include_components::<(Position, Rotation, MovingUnit)>()
         .build();
 
     for d in data {

@@ -1,6 +1,6 @@
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    tuple::{ComponentsTuple, NonEmptyTuple},
+    tuple::ComponentsTuple,
     Archetype,
 };
 
@@ -21,8 +21,8 @@ pub trait ComponentsQueryAccess {
 
 impl<TRead, TWrite> ComponentsQueryAccess for (TRead, TWrite)
 where
-    TRead: ComponentsTuple + NonEmptyTuple,
-    TWrite: ComponentsTuple + NonEmptyTuple,
+    TRead: ComponentsTuple,
+    TWrite: ComponentsTuple,
 {
     type OffsetsTuple = (TRead::OffsetsTuple, TWrite::OffsetsTuple);
     type AccessOutput<'a> = (TRead::RefsTuple<'a>, TWrite::MutRefsTuple<'a>);
@@ -42,7 +42,10 @@ where
     fn get_refs<'a>(
         page: &'a ArchetypeDataPage,
         entity_index: usize,
-        (read_offsets, write_offsets): &Self::OffsetsTuple,
+        (
+            read_offsets, 
+            write_offsets
+        ): &Self::OffsetsTuple,
     ) -> Self::AccessOutput<'a> {
         (
             TRead::get_refs(page, entity_index, read_offsets),
@@ -53,7 +56,7 @@ where
 
 impl<TRead> ComponentsQueryAccess for (TRead, ())
 where
-    TRead: ComponentsTuple + NonEmptyTuple,
+    TRead: ComponentsTuple,
 {
     type OffsetsTuple = TRead::OffsetsTuple;
     type AccessOutput<'a> = TRead::RefsTuple<'a>;
@@ -77,7 +80,7 @@ where
 
 impl<TWrite> ComponentsQueryAccess for ((), TWrite)
 where
-    TWrite: ComponentsTuple + NonEmptyTuple,
+    TWrite: ComponentsTuple,
 {
     type OffsetsTuple = TWrite::OffsetsTuple;
     type AccessOutput<'a> = TWrite::MutRefsTuple<'a>;

@@ -1,5 +1,7 @@
 mod archetype;
+
 mod archetype_builder;
+
 mod archetype_data_layout;
 mod archetype_data_page;
 mod archetype_data_page_view;
@@ -17,6 +19,8 @@ mod tests;
 mod tuple;
 
 pub mod macros;
+
+pub(crate) use archetype_builder::archetype_builder_tuple_impl;
 
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;

@@ -1,6 +1,11 @@
+
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, ArchetypeBuilder, Store};
+    use crate::{Archetype, ArchetypeBuilder, Store, Component};
+
+    impl Component for u32 {
+        
+    }
 
     #[test]
     fn create_not_panics() {
@@ -100,6 +105,6 @@ mod tests {
     }
 
     fn create_archetype_stub() -> Archetype {
-        ArchetypeBuilder::new().component::<u32>().build()
+        ArchetypeBuilder::new().include_components::<u32>().build()
     }
 }

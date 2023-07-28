@@ -48,7 +48,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--release",
+                    "--profile=release-with-debug-info",
                     "--example=cache_test",
                     "--package=division_ecs"
                 ],
