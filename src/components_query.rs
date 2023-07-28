@@ -3,16 +3,6 @@ use crate::{
     Store,
 };
 
-pub trait QueryIntoIter<T>
-where
-    T: ComponentsQueryAccess,
-{
-    fn into_iter<'a, 'b: 'a>(
-        &'a self,
-        query: &'b mut ComponentsQuery<T>,
-    ) -> ComponentsQueryIter<'a, T>;
-}
-
 pub struct ComponentsQuery<T>
 where
     T: ComponentsQueryAccess,
@@ -54,11 +44,8 @@ where
     }
 }
 
-impl<T> QueryIntoIter<T> for Store
-where
-    T: ComponentsQueryAccess,
-{
-    fn into_iter<'a, 'b: 'a>(
+impl Store {
+    pub fn into_iter<'a, 'b: 'a, T: ComponentsQueryAccess>(
         &'a self,
         query: &'b mut ComponentsQuery<T>,
     ) -> ComponentsQueryIter<'a, T> {

@@ -1,5 +1,5 @@
 use division_ecs::{
-    ArchetypeBuilder, ComponentsReadOnlyQuery, QueryIntoIter, Store, Component
+    ArchetypeBuilder, ComponentsReadOnlyQuery, Store, Component
 };
 
 struct AosObject {

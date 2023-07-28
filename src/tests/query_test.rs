@@ -3,7 +3,7 @@ mod test {
     use crate::{
         Store, 
         ArchetypeBuilder, 
-        components_query::{QueryIntoIter, ComponentsReadOnlyQuery}, 
+        components_query::ComponentsReadOnlyQuery, 
         ComponentsWriteQuery, 
         Component
     };

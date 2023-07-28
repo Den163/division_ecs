@@ -28,7 +28,6 @@ pub use component::Component;
 pub use component_type::ComponentType;
 pub use components_query::{
     ComponentsQuery, 
-    QueryIntoIter, 
     ComponentsReadOnlyQuery, 
     ComponentsWriteQuery, 
     ComponentsReadWriteQuery
