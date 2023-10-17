@@ -43,7 +43,7 @@ mod test {
 
         let mut write_query = ComponentsWriteQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
-        for (e, (pos, rot)) in store.into_iter(&mut write_query) {
+        for (e, (pos, rot)) in store.query_iter(&mut write_query) {
             entities.push(e);
 
             let (expected_pos, expected_rot, _) =  expected_data[iter_count];
@@ -64,7 +64,7 @@ mod test {
 
         let mut read_query = ComponentsReadOnlyQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
-        for (e, (pos, rot)) in store.into_iter(&mut read_query) {
+        for (e, (pos, rot)) in store.query_iter(&mut read_query) {
             iter_count += 1;
 
             let e_idx = entities.iter().position(|e_check| *e_check == e).unwrap();

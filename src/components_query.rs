@@ -45,7 +45,7 @@ where
 }
 
 impl Store {
-    pub fn into_iter<'a, 'b: 'a, T: ComponentsQueryAccess>(
+    pub fn query_iter<'a, 'b: 'a, T: ComponentsQueryAccess>(
         &'a self,
         query: &'b mut ComponentsQuery<T>,
     ) -> ComponentsQueryIter<'a, T> {
