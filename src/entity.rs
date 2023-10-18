@@ -1,7 +1,7 @@
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Entity {
     pub(crate) id: u32,
-    pub(crate) version: u32
+    pub(crate) version: u32,
 }
 
 impl Entity {
@@ -17,6 +17,9 @@ impl Entity {
 
     #[inline(always)]
     pub fn null() -> Entity {
-        Entity { id: u32::MAX, version: 0 }
+        Entity {
+            id: u32::MAX,
+            version: 0,
+        }
     }
 }

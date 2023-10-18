@@ -1,10 +1,10 @@
-use crate::{archetype_data_page::ArchetypeDataPage, mem_utils, archetype::Archetype};
+use crate::{archetype::Archetype, archetype_data_page::ArchetypeDataPage, mem_utils};
 
 #[derive(Debug)]
 pub(crate) struct ArchetypeDataLayout {
     component_offsets_ptr: *mut usize,
     component_count: usize,
-    entities_capacity: usize
+    entities_capacity: usize,
 }
 
 impl ArchetypeDataLayout {
@@ -12,15 +12,20 @@ impl ArchetypeDataLayout {
         let component_count = archetype.component_count();
 
         let ptr_size = std::mem::size_of::<usize>();
-        let max_align = archetype.components_iter()
-            .map(|c| { c.align() })
-            .max().unwrap();
+        let max_align = archetype
+            .components_iter()
+            .map(|c| c.align())
+            .max()
+            .unwrap();
         let max_align = max_align % ptr_size;
 
-        let bytes_per_components_row_approx = ArchetypeDataPage::PAGE_SIZE_BYTES / component_count - max_align;
-        let entities_capacity = archetype.components_iter()
+        let bytes_per_components_row_approx =
+            ArchetypeDataPage::PAGE_SIZE_BYTES / component_count - max_align;
+        let entities_capacity = archetype
+            .components_iter()
             .map(|c| bytes_per_components_row_approx / c.size())
-            .min().unwrap();
+            .min()
+            .unwrap();
 
         let component_offsets: *mut usize = mem_utils::alloc(component_count);
         let mut offset = 0;
@@ -42,7 +47,7 @@ impl ArchetypeDataLayout {
         ArchetypeDataLayout {
             component_offsets_ptr: component_offsets,
             component_count,
-            entities_capacity
+            entities_capacity,
         }
     }
 

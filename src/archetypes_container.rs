@@ -1,6 +1,8 @@
 use crate::{
     archetype::Archetype, archetype_data_layout::ArchetypeDataLayout,
-    archetype_data_page::ArchetypeDataPage, entity_in_archetype::EntityInArchetype, archetype_data_page_view::ArchetypeDataPageView,
+    archetype_data_page::ArchetypeDataPage,
+    archetype_data_page_view::ArchetypeDataPageView,
+    entity_in_archetype::EntityInArchetype,
 };
 
 #[derive(Debug)]
@@ -54,7 +56,11 @@ impl ArchetypesContainer {
         }
     }
 
-    pub fn add_entity(&mut self, entity_id: u32, archetype: &Archetype) -> EntityInArchetype {
+    pub fn add_entity(
+        &mut self,
+        entity_id: u32,
+        archetype: &Archetype,
+    ) -> EntityInArchetype {
         let archetype_index = self.reserve_archetype(archetype);
         let pages = &mut self.archetype_to_pages[archetype_index].pages;
 
@@ -66,35 +72,32 @@ impl ArchetypesContainer {
             if page.has_free_space() {
                 page.push_entity_id(entity_id);
 
-                return EntityInArchetype {
-                    page_index,
-                };
+                return EntityInArchetype { page_index };
             }
         }
 
         let page_index = self.reserve_page_for_archetype(archetype_index);
         self.pages[page_index].push_entity_id(entity_id);
 
-        EntityInArchetype {
-            page_index,
-        }
+        EntityInArchetype { page_index }
     }
 
-    pub fn remove_entity(&mut self, entity_id: u32, entity_in_archetype: EntityInArchetype) {
+    pub fn remove_entity(
+        &mut self,
+        entity_id: u32,
+        entity_in_archetype: EntityInArchetype,
+    ) {
         let page = &mut self.pages[entity_in_archetype.page_index];
 
         page.remove_entity_id(entity_id);
     }
 
-    pub fn get_page_view(
-        &self, 
-        page_index: usize
-    ) -> ArchetypeDataPageView {
+    pub fn get_page_view(&self, page_index: usize) -> ArchetypeDataPageView {
         let arch_idx = self.page_to_archetype[page_index] as usize;
         ArchetypeDataPageView {
             archetype: &self.archetypes[arch_idx],
             layout: &self.archetype_layouts[arch_idx],
-            page: &self.pages[page_index]
+            page: &self.pages[page_index],
         }
     }
 
@@ -151,7 +154,8 @@ impl ArchetypesContainer {
             None => {
                 let page_index = self.pages.len();
                 self.pages.insert(page_index, ArchetypeDataPage::new());
-                self.page_to_archetype.insert(page_index, archetype_index as isize);
+                self.page_to_archetype
+                    .insert(page_index, archetype_index as isize);
                 page_index
             }
         };
@@ -159,7 +163,9 @@ impl ArchetypesContainer {
         let layout = &self.archetype_layouts[archetype_index];
         self.pages[page_index].set_layout(layout);
 
-        self.archetype_to_pages[archetype_index].pages.push(page_index);
+        self.archetype_to_pages[archetype_index]
+            .pages
+            .push(page_index);
         self.page_to_archetype[page_index] = archetype_index as isize;
 
         page_index

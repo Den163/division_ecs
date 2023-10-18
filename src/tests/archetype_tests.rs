@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{ ArchetypeBuilder, Component};
+    use crate::{ArchetypeBuilder, Component};
 
     #[derive(Component, Clone, Copy)]
     struct TestType1;
@@ -53,7 +53,8 @@ mod tests {
 
         assert!(arch.is_include(&arch_to_extend));
 
-        let not_extended_archetype = ArchetypeBuilder::new().include_components::<f32>().build();
+        let not_extended_archetype =
+            ArchetypeBuilder::new().include_components::<f32>().build();
 
         assert!(arch.is_include(&not_extended_archetype) == false);
     }
@@ -84,9 +85,7 @@ mod tests {
 
         assert!(arch.is_exclude(&arch_with_one_match_type) == false);
 
-        let same_types_arch = ArchetypeBuilder::new()
-            .include_archetype(&arch)
-            .build();
+        let same_types_arch = ArchetypeBuilder::new().include_archetype(&arch).build();
 
         assert!(arch.is_exclude(&same_types_arch) == false);
     }

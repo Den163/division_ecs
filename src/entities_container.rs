@@ -14,7 +14,8 @@ impl EntitiesContainer {
     pub fn new(capacity: usize) -> EntitiesContainer {
         let entity_to_version = mem_utils::alloc_zeroed(capacity);
         let entity_to_archetype = mem_utils::alloc_zeroed(capacity);
-        let entity_to_is_alive = mem_utils::alloc_zeroed(get_bit_vec_size_for_capacity(capacity));
+        let entity_to_is_alive =
+            mem_utils::alloc_zeroed(get_bit_vec_size_for_capacity(capacity));
         let gap_ids = Vec::new();
 
         EntitiesContainer {
@@ -113,7 +114,8 @@ impl EntitiesContainer {
 
         unsafe {
             self.validate_entity_version(entity)
-                & ((*self.entity_to_is_alive.add(mask_index as usize) & alive_mask) == alive_mask)
+                & ((*self.entity_to_is_alive.add(mask_index as usize) & alive_mask)
+                    == alive_mask)
         }
     }
 
@@ -125,13 +127,15 @@ impl EntitiesContainer {
 
     #[inline(always)]
     pub(crate) fn get_entity_versions(&self) -> &[u32] {
-        unsafe {
-            &*std::ptr::slice_from_raw_parts(self.entity_to_version, self.capacity)
-        }
+        unsafe { &*std::ptr::slice_from_raw_parts(self.entity_to_version, self.capacity) }
     }
 
     #[inline(always)]
-    pub fn set_entity_in_archetype(&self, id: u32, entity_in_archetype: EntityInArchetype) {
+    pub fn set_entity_in_archetype(
+        &self,
+        id: u32,
+        entity_in_archetype: EntityInArchetype,
+    ) {
         self.validate_id_with_panic(id);
         unsafe {
             *self.entity_to_archetype.add(id as usize) = entity_in_archetype;

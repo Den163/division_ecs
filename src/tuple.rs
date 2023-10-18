@@ -1,8 +1,6 @@
 use paste::paste;
 
-use crate::{
-    archetype_data_page::ArchetypeDataPage, type_ids, Archetype, Component,
-};
+use crate::{archetype_data_page::ArchetypeDataPage, type_ids, Archetype, Component};
 
 pub trait ComponentsTuple {
     type OffsetsTuple;
@@ -10,7 +8,10 @@ pub trait ComponentsTuple {
     type MutRefsTuple<'a>;
     const COMPONENT_COUNT: usize;
 
-    fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple;
+    fn get_offsets(
+        archetype: &Archetype,
+        layout_offsets: *const usize,
+    ) -> Self::OffsetsTuple;
 
     fn get_offsets_checked(
         archetype: &Archetype,

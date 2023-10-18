@@ -35,7 +35,8 @@ mod tests {
         for i in 0..entities_capacity {
             let entity = entities[i];
 
-            let (&actual_u64, &actual_u128) = store.get_components_refs::<(u64, u128)>(entity);
+            let (&actual_u64, &actual_u128) =
+                store.get_components_refs::<(u64, u128)>(entity);
             assert_eq!((u64_values[i], u128_values[i]), (actual_u64, actual_u128));
         }
     }

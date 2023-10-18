@@ -1,11 +1,8 @@
 #[cfg(test)]
 mod test {
     use crate::{
-        Store, 
-        ArchetypeBuilder, 
-        components_query::ComponentsReadOnlyQuery, 
-        ComponentsWriteQuery, 
-        Component
+        components_query::ComponentsReadOnlyQuery, ArchetypeBuilder, Component,
+        ComponentsWriteQuery, Store,
     };
 
     #[derive(Debug, PartialEq, Component, Clone, Copy)]
@@ -16,7 +13,7 @@ mod test {
 
     #[derive(Debug, PartialEq, Component, Clone, Copy)]
     struct Rotation {
-        angle: f64
+        angle: f64,
     }
 
     #[test]
@@ -31,8 +28,8 @@ mod test {
             .build();
 
         let expected_data = [
-            (Position { x: 10., y: 20. }, Rotation { angle: 90. }, arch0 ), 
-            (Position { x: 0., y: 20. }, Rotation { angle: 180. }, arch1 )
+            (Position { x: 10., y: 20. }, Rotation { angle: 90. }, arch0),
+            (Position { x: 0., y: 20. }, Rotation { angle: 180. }, arch1),
         ];
 
         let mut entities = Vec::new();
@@ -46,7 +43,7 @@ mod test {
         for (e, (pos, rot)) in store.query_iter(&mut write_query) {
             entities.push(e);
 
-            let (expected_pos, expected_rot, _) =  expected_data[iter_count];
+            let (expected_pos, expected_rot, _) = expected_data[iter_count];
 
             *pos = expected_pos;
             *rot = expected_rot;
@@ -58,7 +55,7 @@ mod test {
         let other_arch = ArchetypeBuilder::new()
             .include_components::<(f32, u64)>()
             .build();
-        
+
         store.create_entity(&other_arch);
         store.create_entity(&other_arch);
 

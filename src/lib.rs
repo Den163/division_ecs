@@ -8,13 +8,13 @@ mod archetype_data_page_view;
 mod archetypes_container;
 mod component;
 mod component_type;
+mod components_query;
 mod components_query_access;
+mod entities_container;
 mod entity;
 mod entity_in_archetype;
-mod entities_container;
 mod mem_utils;
 mod store;
-mod components_query;
 mod tests;
 mod tuple;
 
@@ -27,10 +27,8 @@ pub use archetype_builder::ArchetypeBuilder;
 pub use component::Component;
 pub use component_type::ComponentType;
 pub use components_query::{
-    ComponentsQuery, 
-    ComponentsReadOnlyQuery, 
-    ComponentsWriteQuery, 
-    ComponentsReadWriteQuery
+    ComponentsQuery, ComponentsReadOnlyQuery, ComponentsReadWriteQuery,
+    ComponentsWriteQuery,
 };
 pub use entity::Entity;
 pub use store::Store;

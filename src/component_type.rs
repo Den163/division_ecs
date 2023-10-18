@@ -8,7 +8,7 @@ pub struct ComponentType {
 }
 
 impl ComponentType {
-    pub fn of<T: 'static>()  -> Self {
+    pub fn of<T: 'static>() -> Self {
         ComponentType {
             id: TypeId::of::<T>(),
             size: std::mem::size_of::<T>(),

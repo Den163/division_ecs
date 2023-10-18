@@ -15,15 +15,20 @@ impl<'a> ArchetypeDataPageView<'a> {
     where
         T: ComponentsTuple,
     {
-        let offsets = T::get_offsets_checked(&self.archetype, self.layout.component_offsets());
+        let offsets =
+            T::get_offsets_checked(&self.archetype, self.layout.component_offsets());
         T::get_refs(self.page, page_entity_index, &offsets)
     }
 
-    pub fn get_components_refs_mut<T>(&self, page_entity_index: usize) -> T::MutRefsTuple<'a>
+    pub fn get_components_refs_mut<T>(
+        &self,
+        page_entity_index: usize,
+    ) -> T::MutRefsTuple<'a>
     where
         T: ComponentsTuple,
     {
-        let offsets = T::get_offsets_checked(&self.archetype, self.layout.component_offsets());
+        let offsets =
+            T::get_offsets_checked(&self.archetype, self.layout.component_offsets());
         T::get_refs_mut(self.page, page_entity_index, &offsets)
     }
 }

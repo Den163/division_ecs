@@ -1,11 +1,8 @@
-
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, ArchetypeBuilder, Store, Component};
+    use crate::{Archetype, ArchetypeBuilder, Component, Store};
 
-    impl Component for u32 {
-        
-    }
+    impl Component for u32 {}
 
     #[test]
     fn create_not_panics() {

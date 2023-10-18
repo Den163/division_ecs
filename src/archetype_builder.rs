@@ -1,7 +1,11 @@
-use crate::{component_type::ComponentType, archetype::Archetype, tuple::ComponentsTuple};
+use crate::{
+    archetype::Archetype, component_type::ComponentType, tuple::ComponentsTuple,
+};
 
-pub trait ArchetypeBuilerTupleExtension : ComponentsTuple {
-    fn add_components_to_archetype_builder(builder: &mut ArchetypeBuilder) -> &mut ArchetypeBuilder;
+pub trait ArchetypeBuilerTupleExtension: ComponentsTuple {
+    fn add_components_to_archetype_builder(
+        builder: &mut ArchetypeBuilder,
+    ) -> &mut ArchetypeBuilder;
 }
 
 pub struct ArchetypeBuilder {
@@ -10,7 +14,9 @@ pub struct ArchetypeBuilder {
 
 impl ArchetypeBuilder {
     pub fn new() -> ArchetypeBuilder {
-        ArchetypeBuilder { component_types: Vec::new() }
+        ArchetypeBuilder {
+            component_types: Vec::new(),
+        }
     }
 
     pub fn include_components<T: ArchetypeBuilerTupleExtension>(&mut self) -> &mut Self {
@@ -34,7 +40,8 @@ impl ArchetypeBuilder {
     }
 
     pub fn include_archetype(&mut self, archetype: &Archetype) -> &mut Self {
-        self.component_types.reserve(self.component_types.capacity() + archetype.component_count());
+        self.component_types
+            .reserve(self.component_types.capacity() + archetype.component_count());
 
         for comp in archetype.components_iter() {
             if !self.component_types.contains(&comp) {
@@ -57,7 +64,7 @@ macro_rules! archetype_builder_tuple_impl {
         #[allow(unused_parens)]
         impl<$($T: 'static + Component),*> $crate::archetype_builder::ArchetypeBuilerTupleExtension for ($($T),*) {
             fn add_components_to_archetype_builder(
-                builder: &mut $crate::ArchetypeBuilder) -> &mut $crate::ArchetypeBuilder 
+                builder: &mut $crate::ArchetypeBuilder) -> &mut $crate::ArchetypeBuilder
             {
                 let components = & $crate::component_types!( $($T),* );
                 builder.include_component_types(components)

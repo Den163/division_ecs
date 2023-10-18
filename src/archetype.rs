@@ -1,4 +1,7 @@
-use std::{any::TypeId, hash::{Hash, Hasher}};
+use std::{
+    any::TypeId,
+    hash::{Hash, Hasher},
+};
 
 use crate::{component_type::ComponentType, mem_utils};
 
@@ -14,7 +17,7 @@ impl Archetype {
     pub(crate) fn new(components: &mut [ComponentType]) -> Self {
         let component_count = components.len();
         assert!(component_count > 0);
-        
+
         let ids: *mut TypeId = mem_utils::alloc(component_count);
         let sizes: *mut usize = mem_utils::alloc(component_count);
         let aligns: *mut usize = mem_utils::alloc(component_count);
@@ -27,7 +30,12 @@ impl Archetype {
             };
         }
 
-        Archetype { ids, sizes, aligns, component_count }
+        Archetype {
+            ids,
+            sizes,
+            aligns,
+            component_count,
+        }
     }
 
     #[inline(always)]
@@ -36,28 +44,24 @@ impl Archetype {
     }
 
     #[inline(always)]
-    pub fn components_iter<'a>(&'a self) -> impl Iterator<Item=ComponentType> + 'a {
-        (0..self.component_count).into_iter().map(|i| { unsafe {
-            ComponentType::new(
-                *self.ids.add(i), 
-                *self.sizes.add(i), 
-                *self.aligns.add(i) 
-            ) 
-        }})
+    pub fn components_iter<'a>(&'a self) -> impl Iterator<Item = ComponentType> + 'a {
+        (0..self.component_count).into_iter().map(|i| unsafe {
+            ComponentType::new(*self.ids.add(i), *self.sizes.add(i), *self.aligns.add(i))
+        })
     }
 
     pub fn find_component_index(&self, type_id: TypeId) -> Option<usize> {
         unsafe {
-            let slice = & *std::ptr::slice_from_raw_parts(self.ids, self.component_count);
+            let slice = &*std::ptr::slice_from_raw_parts(self.ids, self.component_count);
             match slice.binary_search(&type_id) {
                 Ok(idx) => Some(idx),
-                Err(_) => None
+                Err(_) => None,
             }
         }
     }
 
     #[inline(always)]
-    pub fn component_count(&self) -> usize { 
+    pub fn component_count(&self) -> usize {
         self.component_count
     }
 
@@ -68,7 +72,7 @@ impl Archetype {
 
         for i in 0..self.component_count {
             let is_different_id = unsafe { *self.ids.add(i) != *other.ids.add(i) };
-            if is_different_id  {
+            if is_different_id {
                 return false;
             }
         }
@@ -89,7 +93,7 @@ impl Archetype {
         }
 
         for id in ids_to_check {
-            let result  = self_ids.binary_search(id);
+            let result = self_ids.binary_search(id);
             if result.is_err() {
                 return false;
             }
@@ -97,7 +101,6 @@ impl Archetype {
 
         return true;
     }
-
 
     #[inline(always)]
     pub fn is_exclude(&self, other: &Self) -> bool {
@@ -115,8 +118,7 @@ impl Archetype {
                 Err(found_idx) => {
                     if found_idx >= self_ids.len() {
                         break;
-                    }
-                    else {
+                    } else {
                         left_idx = found_idx;
                     }
                 }
@@ -128,9 +130,7 @@ impl Archetype {
 
     #[inline(always)]
     pub fn included_ids(&self) -> &[TypeId] {
-        unsafe {
-            &*std::ptr::slice_from_raw_parts(self.ids, self.component_count)
-        }
+        unsafe { &*std::ptr::slice_from_raw_parts(self.ids, self.component_count) }
     }
 }
 
@@ -146,11 +146,11 @@ impl Clone for Archetype {
             self.aligns.copy_to_nonoverlapping(aligns, component_count);
         }
 
-        Self { 
+        Self {
             ids,
             sizes,
-            aligns, 
-            component_count
+            aligns,
+            component_count,
         }
     }
 }
@@ -158,10 +158,8 @@ impl Clone for Archetype {
 impl Hash for Archetype {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for i in 0..self.component_count {
-            let id = unsafe {
-                *self.ids.add(i)
-            };
-            
+            let id = unsafe { *self.ids.add(i) };
+
             id.hash(state);
         }
     }

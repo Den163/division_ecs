@@ -1,6 +1,6 @@
 use crate::{
-    archetype_data_page::ArchetypeDataPage, components_query_access::ComponentsQueryAccess, Entity,
-    Store,
+    archetype_data_page::ArchetypeDataPage,
+    components_query_access::ComponentsQueryAccess, Entity, Store,
 };
 
 pub struct ComponentsQuery<T>
@@ -117,7 +117,8 @@ where
                 return None;
             }
 
-            curr_page_view = unsafe { page_views.get_unchecked(self.current_page_view_index) };
+            curr_page_view =
+                unsafe { page_views.get_unchecked(self.current_page_view_index) };
             curr_page = unsafe { &*curr_page_view.page };
             entities_ids = curr_page.entities_ids();
         }

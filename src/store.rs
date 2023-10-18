@@ -1,7 +1,8 @@
 use crate::{
     archetype::Archetype, archetype_data_page::ArchetypeDataPage,
-    archetype_data_page_view::ArchetypeDataPageView, archetypes_container::ArchetypesContainer,
-    entities_container::EntitiesContainer, tuple::ComponentsTuple, Entity,
+    archetype_data_page_view::ArchetypeDataPageView,
+    archetypes_container::ArchetypesContainer, entities_container::EntitiesContainer,
+    tuple::ComponentsTuple, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -68,7 +69,6 @@ impl Store {
         page_view.get_components_refs::<T>(entity_index)
     }
 
-    
     #[inline(always)]
     pub fn get_components_refs_mut<'a, T>(&'a self, entity: Entity) -> T::MutRefsTuple<'a>
     where
