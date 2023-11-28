@@ -12,7 +12,7 @@ impl ArchetypeDataPage {
     pub const PAGE_SIZE_BYTES: usize = 4096 * 4;
 
     pub(crate) fn new() -> Self {
-        let components_data_ptr = mem_utils::alloc(Self::PAGE_SIZE_BYTES);
+        let components_data_ptr = unsafe { mem_utils::alloc(Self::PAGE_SIZE_BYTES) };
 
         ArchetypeDataPage {
             components_data_ptr,
@@ -99,6 +99,6 @@ impl ArchetypeDataPage {
 
 impl Drop for ArchetypeDataPage {
     fn drop(&mut self) {
-        mem_utils::dealloc(self.components_data_ptr, Self::PAGE_SIZE_BYTES);
+        unsafe { mem_utils::dealloc(self.components_data_ptr, Self::PAGE_SIZE_BYTES) };
     }
 }

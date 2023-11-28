@@ -27,7 +27,7 @@ impl ArchetypeDataLayout {
             .min()
             .unwrap();
 
-        let component_offsets: *mut usize = mem_utils::alloc(component_count);
+        let component_offsets: *mut usize = unsafe { mem_utils::alloc(component_count) };
         let mut offset = 0;
         for (i, ct) in archetype.components_iter().enumerate() {
             let align_offset = offset % ct.align();
@@ -64,6 +64,8 @@ impl ArchetypeDataLayout {
 
 impl Drop for ArchetypeDataLayout {
     fn drop(&mut self) {
-        mem_utils::dealloc(self.component_offsets_ptr, self.component_count);
+        unsafe {
+            mem_utils::dealloc(self.component_offsets_ptr, self.component_count);
+        }
     }
 }

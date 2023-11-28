@@ -18,9 +18,13 @@ impl Archetype {
         let component_count = components.len();
         assert!(component_count > 0);
 
-        let ids: *mut TypeId = mem_utils::alloc(component_count);
-        let sizes: *mut usize = mem_utils::alloc(component_count);
-        let aligns: *mut usize = mem_utils::alloc(component_count);
+        let (ids, sizes, aligns): (*mut TypeId, *mut usize, *mut usize) = unsafe {
+            (
+                mem_utils::alloc(component_count),
+                mem_utils::alloc(component_count),
+                mem_utils::alloc(component_count),
+            )
+        };
 
         for (i, comp) in components.iter().enumerate() {
             unsafe {
@@ -137,9 +141,14 @@ impl Archetype {
 impl Clone for Archetype {
     fn clone(&self) -> Self {
         let component_count = self.component_count;
-        let ids = mem_utils::alloc(component_count);
-        let sizes = mem_utils::alloc(component_count);
-        let aligns = mem_utils::alloc(component_count);
+        let (ids, sizes, aligns) = unsafe {
+            (
+                mem_utils::alloc(component_count),
+                mem_utils::alloc(component_count),
+                mem_utils::alloc(component_count),
+            )
+        };
+
         unsafe {
             self.ids.copy_to_nonoverlapping(ids, component_count);
             self.sizes.copy_to_nonoverlapping(sizes, component_count);
@@ -167,8 +176,10 @@ impl Hash for Archetype {
 
 impl Drop for Archetype {
     fn drop(&mut self) {
-        mem_utils::dealloc(self.ids, self.component_count);
-        mem_utils::dealloc(self.sizes, self.component_count);
-        mem_utils::dealloc(self.aligns, self.component_count);
+        unsafe {
+            mem_utils::dealloc(self.ids, self.component_count);
+            mem_utils::dealloc(self.sizes, self.component_count);
+            mem_utils::dealloc(self.aligns, self.component_count);
+        }
     }
 }

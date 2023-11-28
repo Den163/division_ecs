@@ -12,10 +12,14 @@ pub(crate) struct EntitiesContainer {
 
 impl EntitiesContainer {
     pub fn new(capacity: usize) -> EntitiesContainer {
-        let entity_to_version = mem_utils::alloc_zeroed(capacity);
-        let entity_to_archetype = mem_utils::alloc_zeroed(capacity);
-        let entity_to_is_alive =
-            mem_utils::alloc_zeroed(get_bit_vec_size_for_capacity(capacity));
+        let (entity_to_version, entity_to_archetype, entity_to_is_alive) = unsafe {
+            (
+                mem_utils::alloc_zeroed(capacity),
+                mem_utils::alloc_zeroed(capacity),
+                mem_utils::alloc_bit_vec(capacity),
+            )
+        };
+
         let gap_ids = Vec::new();
 
         EntitiesContainer {
@@ -38,27 +42,25 @@ impl EntitiesContainer {
         }
 
         let old_capacity = self.capacity;
-        let alive_old_capacity = get_bit_vec_size_for_capacity(old_capacity);
-        let alive_new_capacity = get_bit_vec_size_for_capacity(new_capacity);
 
-        self.entity_to_version = mem_utils::realloc_with_uninit_capacity_zeroing(
-            self.entity_to_version,
-            old_capacity,
-            new_capacity,
-        );
-        self.entity_to_archetype = mem_utils::realloc_with_uninit_capacity_zeroing(
-            self.entity_to_archetype,
-            old_capacity,
-            new_capacity,
-        );
-
-        if alive_old_capacity != alive_new_capacity {
-            self.entity_to_is_alive = mem_utils::realloc_with_uninit_capacity_zeroing(
-                self.entity_to_is_alive,
-                alive_old_capacity,
-                alive_new_capacity,
+        unsafe {
+            self.entity_to_version = mem_utils::realloc_with_uninit_capacity_zeroing(
+                self.entity_to_version,
+                old_capacity,
+                new_capacity,
             );
-        }
+            self.entity_to_archetype = mem_utils::realloc_with_uninit_capacity_zeroing(
+                self.entity_to_archetype,
+                old_capacity,
+                new_capacity,
+            );
+
+            self.entity_to_is_alive = mem_utils::realloc_bit_vec(
+                self.entity_to_is_alive,
+                old_capacity,
+                new_capacity,
+            );
+        };
 
         self.capacity = new_capacity;
     }
@@ -81,7 +83,7 @@ impl EntitiesContainer {
         let usid = id as usize;
         let version;
         unsafe {
-            self.toggle_alive(id);
+            mem_utils::toggle_bitvec_bit(self.entity_to_is_alive, usid);
             let version_ptr = self.entity_to_version.add(usid);
 
             version = *version_ptr + 1;
@@ -96,7 +98,9 @@ impl EntitiesContainer {
 
         let id = entity.id;
         assert!(self.is_alive(entity), "Entity is already dead");
-        self.toggle_alive(id);
+        unsafe {
+            mem_utils::toggle_bitvec_bit(self.entity_to_is_alive, id as usize);
+        }
 
         if id == self.next_free_id - 1 {
             self.next_free_id = id;
@@ -108,14 +112,9 @@ impl EntitiesContainer {
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.validate_id_with_panic(entity.id);
 
-        let mask_index = entity.id / 32;
-        let mask_bit = entity.id % 32;
-        let alive_mask = 1 >> mask_bit;
-
         unsafe {
             self.validate_entity_version(entity)
-                & ((*self.entity_to_is_alive.add(mask_index as usize) & alive_mask)
-                    == alive_mask)
+                & mem_utils::is_bitvec_bit_on(self.entity_to_is_alive, entity.id as usize)
         }
     }
 
@@ -139,17 +138,6 @@ impl EntitiesContainer {
         self.validate_id_with_panic(id);
         unsafe {
             *self.entity_to_archetype.add(id as usize) = entity_in_archetype;
-        }
-    }
-
-    fn toggle_alive(&self, id: u32) {
-        let mask_index = id / 32;
-        let mask_bit = id as u32 % 32;
-        let alive_mask = 1 >> mask_bit;
-
-        unsafe {
-            let mask_ptr = self.entity_to_is_alive.add(mask_index as usize);
-            *mask_ptr ^= alive_mask;
         }
     }
 
@@ -181,15 +169,10 @@ impl EntitiesContainer {
 
 impl Drop for EntitiesContainer {
     fn drop(&mut self) {
-        mem_utils::dealloc(
-            self.entity_to_is_alive,
-            get_bit_vec_size_for_capacity(self.capacity),
-        );
-        mem_utils::dealloc(self.entity_to_version, self.capacity);
-        mem_utils::dealloc(self.entity_to_archetype, self.capacity);
+        unsafe {
+            mem_utils::dealloc_bit_vec(self.entity_to_is_alive, self.capacity);
+            mem_utils::dealloc(self.entity_to_version, self.capacity);
+            mem_utils::dealloc(self.entity_to_archetype, self.capacity);
+        }
     }
-}
-
-fn get_bit_vec_size_for_capacity(capacity: usize) -> usize {
-    capacity / 32 + 1
 }
