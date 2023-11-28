@@ -1,29 +1,29 @@
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+
     use crate::resource_store::ResourceStore;
     const EXPECTED_STRING: &str = "String to check";
 
-    static mut DROP_COUNTS: usize = 0;
+    thread_local! {
+        static DROP_COUNTS: RefCell<usize> = RefCell::new(0);
+    }
 
     struct DropCounter;
 
     impl DropCounter {
         fn reset() {
-            unsafe {
-                DROP_COUNTS = 0;
-            }
+            DROP_COUNTS.set(0);
         }
 
         fn drop_counts_eq(drop_counts: usize) -> bool {
-            unsafe { drop_counts == DROP_COUNTS }
+            unsafe { DROP_COUNTS.with(|v| *v.as_ptr() == drop_counts) }
         }
     }
 
     impl Drop for DropCounter {
         fn drop(&mut self) {
-            unsafe {
-                DROP_COUNTS += 1;
-            }
+            DROP_COUNTS.set(DROP_COUNTS.take() + 1);
         }
     }
 
