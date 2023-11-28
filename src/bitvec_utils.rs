@@ -27,7 +27,7 @@ pub unsafe fn toggle_bit(ptr: *mut u32, bit_index: usize) {
     let base_bits = get_bitvec_base_bits();
     let mask_index = bit_index / base_bits;
     let mask_bit = bit_index % base_bits;
-    let alive_mask = 1 >> mask_bit;
+    let alive_mask = 1 << mask_bit;
 
     let mask_ptr = ptr.add(mask_index as usize);
     *mask_ptr ^= alive_mask;
@@ -37,7 +37,7 @@ pub unsafe fn is_bit_on(ptr: *const u32, bit_index: usize) -> bool {
     let base_bits = get_bitvec_base_bits();
     let mask_index = bit_index / base_bits;
     let mask_bit = bit_index % base_bits;
-    let alive_mask = 1 >> mask_bit;
+    let alive_mask = 1 << mask_bit;
 
     let mask_ptr = ptr.add(mask_index as usize);
     (*mask_ptr & alive_mask) == alive_mask

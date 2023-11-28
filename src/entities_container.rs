@@ -1,4 +1,4 @@
-use crate::{mem_utils, Entity, bitvec_utils};
+use crate::{bitvec_utils, mem_utils, Entity};
 
 #[derive(Debug)]
 pub(crate) struct EntitiesContainer {
@@ -34,8 +34,7 @@ impl EntitiesContainer {
     }
 
     pub fn will_grow_with_entity_create(&self) -> bool {
-        (self.gap_ids.len() == 0) &
-        (self.next_free_id >= self.capacity as u32)
+        (self.gap_ids.len() == 0) & (self.next_free_id >= self.capacity as u32)
     }
 
     pub fn will_grow_with_id(&self, id: u32) -> bool {
@@ -75,7 +74,7 @@ impl EntitiesContainer {
             self.next_free_id += 1;
 
             if self.will_grow_with_id(id) {
-                self.grow(self.capacity * 2);
+                self.grow(std::cmp::max(self.capacity, 1) * 2);
             }
 
             id
@@ -115,8 +114,16 @@ impl EntitiesContainer {
 
         unsafe {
             self.validate_entity_version(entity)
-                & bitvec_utils::is_bit_on(self.entity_to_is_alive_bitvec, entity.id as usize)
+                & bitvec_utils::is_bit_on(
+                    self.entity_to_is_alive_bitvec,
+                    entity.id as usize,
+                )
         }
+    }
+
+    #[inline(always)]
+    pub(crate) fn is_alive_at_index(&self, index: usize) -> bool {
+        unsafe { bitvec_utils::is_bit_on(self.entity_to_is_alive_bitvec, index) }
     }
 
     #[inline(always)]

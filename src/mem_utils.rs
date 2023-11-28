@@ -31,7 +31,7 @@ pub unsafe fn realloc<T>(
     ptr.copy_to_nonoverlapping(new_ptr, old_capacity);
     dealloc(ptr, old_capacity);
 
-    ptr
+    new_ptr
 }
 
 pub unsafe fn realloc_with_uninit_capacity_zeroing<T>(

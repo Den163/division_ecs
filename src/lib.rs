@@ -15,6 +15,7 @@ mod entities_container;
 mod entity;
 mod entity_in_archetype;
 mod mem_utils;
+mod resource_store;
 mod store;
 mod tests;
 mod tuple;
@@ -31,5 +32,6 @@ pub use components_query::{
     ComponentsQuery, ComponentsReadOnlyQuery, ComponentsReadWriteQuery,
     ComponentsWriteQuery,
 };
+pub use resource_store::ResourceStore;
 pub use entity::Entity;
 pub use store::Store;
