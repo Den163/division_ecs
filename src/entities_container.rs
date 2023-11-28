@@ -1,4 +1,4 @@
-use crate::{entity_in_archetype::EntityInArchetype, mem_utils, Entity};
+use crate::{entity_in_archetype::EntityInArchetype, mem_utils, Entity, bitvec_utils};
 
 #[derive(Debug)]
 pub(crate) struct EntitiesContainer {
@@ -6,7 +6,7 @@ pub(crate) struct EntitiesContainer {
     capacity: usize,
     entity_to_version: *mut u32,
     entity_to_archetype: *mut EntityInArchetype,
-    entity_to_is_alive: *mut u32,
+    entity_to_is_alive_bitvec: *mut u32,
     next_free_id: u32,
 }
 
@@ -16,7 +16,7 @@ impl EntitiesContainer {
             (
                 mem_utils::alloc_zeroed(capacity),
                 mem_utils::alloc_zeroed(capacity),
-                mem_utils::alloc_bit_vec(capacity),
+                bitvec_utils::alloc(capacity),
             )
         };
 
@@ -26,7 +26,7 @@ impl EntitiesContainer {
             capacity,
             entity_to_version,
             entity_to_archetype,
-            entity_to_is_alive,
+            entity_to_is_alive_bitvec: entity_to_is_alive,
             gap_ids,
             next_free_id: 0,
         }
@@ -55,8 +55,8 @@ impl EntitiesContainer {
                 new_capacity,
             );
 
-            self.entity_to_is_alive = mem_utils::realloc_bit_vec(
-                self.entity_to_is_alive,
+            self.entity_to_is_alive_bitvec = bitvec_utils::realloc(
+                self.entity_to_is_alive_bitvec,
                 old_capacity,
                 new_capacity,
             );
@@ -83,7 +83,7 @@ impl EntitiesContainer {
         let usid = id as usize;
         let version;
         unsafe {
-            mem_utils::toggle_bitvec_bit(self.entity_to_is_alive, usid);
+            bitvec_utils::toggle_bit(self.entity_to_is_alive_bitvec, usid);
             let version_ptr = self.entity_to_version.add(usid);
 
             version = *version_ptr + 1;
@@ -99,7 +99,7 @@ impl EntitiesContainer {
         let id = entity.id;
         assert!(self.is_alive(entity), "Entity is already dead");
         unsafe {
-            mem_utils::toggle_bitvec_bit(self.entity_to_is_alive, id as usize);
+            bitvec_utils::toggle_bit(self.entity_to_is_alive_bitvec, id as usize);
         }
 
         if id == self.next_free_id - 1 {
@@ -114,7 +114,7 @@ impl EntitiesContainer {
 
         unsafe {
             self.validate_entity_version(entity)
-                & mem_utils::is_bitvec_bit_on(self.entity_to_is_alive, entity.id as usize)
+                & bitvec_utils::is_bit_on(self.entity_to_is_alive_bitvec, entity.id as usize)
         }
     }
 
@@ -170,7 +170,7 @@ impl EntitiesContainer {
 impl Drop for EntitiesContainer {
     fn drop(&mut self) {
         unsafe {
-            mem_utils::dealloc_bit_vec(self.entity_to_is_alive, self.capacity);
+            bitvec_utils::dealloc(self.entity_to_is_alive_bitvec, self.capacity);
             mem_utils::dealloc(self.entity_to_version, self.capacity);
             mem_utils::dealloc(self.entity_to_archetype, self.capacity);
         }

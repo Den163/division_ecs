@@ -6,6 +6,7 @@ mod archetype_data_layout;
 mod archetype_data_page;
 mod archetype_data_page_view;
 mod archetypes_container;
+mod bitvec_utils;
 mod component;
 mod component_type;
 mod components_query;
