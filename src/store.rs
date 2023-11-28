@@ -2,7 +2,7 @@ use crate::{
     archetype::Archetype, archetype_data_page::ArchetypeDataPage,
     archetype_data_page_view::ArchetypeDataPageView,
     archetypes_container::ArchetypesContainer, entities_container::EntitiesContainer,
-    tuple::ComponentsTuple, Entity,
+    entity_in_archetype::EntityInArchetype, mem_utils, tuple::ComponentsTuple, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -11,6 +11,8 @@ const ENTITIES_DEFAULT_CAPACITY: usize = 10;
 pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
+
+    entity_to_archetype: *mut EntityInArchetype,
 }
 
 impl Store {
@@ -22,6 +24,7 @@ impl Store {
         Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
+            entity_to_archetype: unsafe { mem_utils::alloc_zeroed(capacity) },
         }
     }
 
@@ -36,17 +39,22 @@ impl Store {
 
     #[inline(always)]
     pub fn create_entity(&mut self, archetype: &Archetype) -> Entity {
+        let will_entities_grow = self.entities_container.will_grow_with_entity_create();
+        let old_capacity = self.entities_container.capacity();
         let entity = self.entities_container.create_entity();
         let entity_in_arch = self.archetypes_container.add_entity(entity.id, archetype);
-        self.entities_container
-            .set_entity_in_archetype(entity.id, entity_in_arch);
+
+        if will_entities_grow {
+            self.grow_entities_in_archetype(old_capacity);
+        }
+        self.set_entity_in_archetype(entity.id, entity_in_arch);
 
         entity
     }
 
     #[inline(always)]
     pub fn destroy_entity(&mut self, entity: Entity) {
-        let entity_in_arch = self.entities_container.get_entity_in_archetype(entity.id);
+        let entity_in_arch = self.get_entity_in_archetype(entity.id);
         self.archetypes_container
             .remove_entity(entity.id, entity_in_arch);
         self.entities_container.destroy_entity(entity)
@@ -83,10 +91,43 @@ impl Store {
 
     #[inline(always)]
     fn get_page_view<'a>(&self, entity: Entity) -> ArchetypeDataPageView {
-        self.archetypes_container.get_page_view(
-            self.entities_container
-                .get_entity_in_archetype(entity.id)
-                .page_index,
-        )
+        self.archetypes_container
+            .get_page_view(self.get_entity_in_archetype(entity.id).page_index)
+    }
+
+    #[inline(always)]
+    fn grow_entities_in_archetype(&mut self, old_capacity: usize) {
+        self.entity_to_archetype = unsafe {
+            mem_utils::realloc_with_uninit_capacity_zeroing(
+                self.entity_to_archetype,
+                old_capacity,
+                self.entities_container.capacity(),
+            )
+        };
+    }
+
+    #[inline(always)]
+    fn get_entity_in_archetype(&self, id: u32) -> EntityInArchetype {
+        self.entities_container.validate_id_with_panic(id);
+        unsafe { *self.entity_to_archetype.add(id as usize) }
+    }
+
+    #[inline(always)]
+    fn set_entity_in_archetype(&self, id: u32, entity_in_archetype: EntityInArchetype) {
+        self.entities_container.validate_id_with_panic(id);
+        unsafe {
+            *self.entity_to_archetype.add(id as usize) = entity_in_archetype;
+        }
+    }
+}
+
+impl Drop for Store {
+    fn drop(&mut self) {
+        unsafe {
+            mem_utils::dealloc(
+                self.entity_to_archetype,
+                self.entities_container.capacity(),
+            )
+        }
     }
 }

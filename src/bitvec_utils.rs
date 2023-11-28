@@ -16,9 +16,8 @@ pub unsafe fn realloc(ptr: *mut u32, old_len: usize, new_len: usize) -> *mut u32
         return ptr;
     }
 
-    let new_ptr = mem_utils::alloc(new_size);
+    let new_ptr = mem_utils::alloc_zeroed(new_size);
     ptr.copy_to_nonoverlapping(new_ptr, old_size);
-    new_ptr.add(old_size).write_bytes(0, new_size - old_size);
 
     mem_utils::dealloc(ptr, old_size);
     new_ptr

@@ -101,6 +101,22 @@ mod tests {
         assert!(reg.is_alive(entity_to_check));
     }
 
+    #[test]
+    fn increase_capacity_will_not_affect_other_entities() {
+        let arch_stub = create_archetype_stub();
+        let mut reg = Store::new();
+        let mut entities = Vec::new();
+
+        for _ in 0..33 {
+            let e = reg.create_entity(&arch_stub);
+            assert!(reg.is_alive(e));
+            
+            entities.push(e);
+        }
+
+        assert!(entities.into_iter().all(|e| reg.is_alive(e)));
+    }
+
     fn create_archetype_stub() -> Archetype {
         ArchetypeBuilder::new().include_components::<u32>().build()
     }

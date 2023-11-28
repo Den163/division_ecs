@@ -23,11 +23,15 @@ pub unsafe fn realloc<T>(
     old_capacity: usize,
     new_capacity: usize,
 ) -> *mut T {
-    std::alloc::realloc(
-        ptr as *mut u8,
-        mem_utils::layout_of::<T>(old_capacity),
-        new_capacity,
-    ) as *mut T
+    if old_capacity == new_capacity {
+        return ptr;
+    }
+
+    let new_ptr = alloc(new_capacity);
+    ptr.copy_to_nonoverlapping(new_ptr, old_capacity);
+    dealloc(ptr, old_capacity);
+
+    ptr
 }
 
 pub unsafe fn realloc_with_uninit_capacity_zeroing<T>(
