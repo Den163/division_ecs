@@ -47,16 +47,24 @@ impl Store {
         if will_entities_grow {
             self.grow_entities_in_archetype(old_capacity);
         }
-        self.set_entity_in_archetype(entity.id, entity_in_arch);
+        *self.get_entity_in_archetype_ref_mut(entity.id) = entity_in_arch;
 
         entity
     }
 
     #[inline(always)]
     pub fn destroy_entity(&mut self, entity: Entity) {
-        let entity_in_arch = self.get_entity_in_archetype(entity.id);
-        self.archetypes_container
-            .remove_entity(entity.id, entity_in_arch);
+        let entity_in_arch = *self.get_entity_in_archetype_ref(entity.id);
+        let pages = self.archetypes_container.get_pages_mut();
+        let page = &mut pages[entity_in_arch.page_index];
+
+        if let Some(swap_remove) =
+            page.swap_remove_entity_at_index(entity_in_arch.index_in_page)
+        {
+            let swapped = self.get_entity_in_archetype_ref_mut(swap_remove.swapped_id);
+            swapped.index_in_page = swap_remove.swapped_index;
+        }
+
         self.entities_container.destroy_entity(entity)
     }
 
@@ -72,9 +80,9 @@ impl Store {
     {
         assert!(self.is_alive(entity));
 
-        let page_view = self.get_page_view(entity);
-        let entity_index = page_view.page.get_entity_index_by_id(entity.id);
-        page_view.get_components_refs::<T>(entity_index)
+        let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
+        let page_view = self.get_page_view(entity_in_archetype.page_index);
+        page_view.get_components_refs::<T>(entity_in_archetype.index_in_page)
     }
 
     #[inline(always)]
@@ -84,15 +92,14 @@ impl Store {
     {
         assert!(self.is_alive(entity));
 
-        let page_view = self.get_page_view(entity);
-        let entity_index = page_view.page.get_entity_index_by_id(entity.id);
-        page_view.get_components_refs_mut::<T>(entity_index)
+        let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
+        let page_view = self.get_page_view(entity_in_archetype.page_index);
+        page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page)
     }
 
     #[inline(always)]
-    fn get_page_view<'a>(&self, entity: Entity) -> ArchetypeDataPageView {
-        self.archetypes_container
-            .get_page_view(self.get_entity_in_archetype(entity.id).page_index)
+    fn get_page_view<'a>(&self, page_index: usize) -> ArchetypeDataPageView {
+        self.archetypes_container.get_page_view(page_index)
     }
 
     #[inline(always)]
@@ -107,17 +114,15 @@ impl Store {
     }
 
     #[inline(always)]
-    fn get_entity_in_archetype(&self, id: u32) -> EntityInArchetype {
+    fn get_entity_in_archetype_ref(&self, id: u32) -> &EntityInArchetype {
         self.entities_container.validate_id_with_panic(id);
-        unsafe { *self.entity_to_archetype.add(id as usize) }
+        unsafe { &*self.entity_to_archetype.add(id as usize) }
     }
 
     #[inline(always)]
-    fn set_entity_in_archetype(&self, id: u32, entity_in_archetype: EntityInArchetype) {
+    fn get_entity_in_archetype_ref_mut(&mut self, id: u32) -> &mut EntityInArchetype {
         self.entities_container.validate_id_with_panic(id);
-        unsafe {
-            *self.entity_to_archetype.add(id as usize) = entity_in_archetype;
-        }
+        unsafe { &mut *self.entity_to_archetype.add(id as usize) }
     }
 }
 

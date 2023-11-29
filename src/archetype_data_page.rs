@@ -8,6 +8,11 @@ pub struct ArchetypeDataPage {
     components_data_ptr: *mut u8,
 }
 
+pub(crate) struct SwapRemoveInfo {
+    pub swapped_id: u32,
+    pub swapped_index: usize,
+}
+
 impl ArchetypeDataPage {
     pub const PAGE_SIZE_BYTES: usize = 4096 * 4;
 
@@ -45,28 +50,24 @@ impl ArchetypeDataPage {
         self.entities_count() < self.entities_capacity()
     }
 
-    pub(crate) fn push_entity_id(&mut self, id: u32) {
+    pub(crate) fn add_entity_id(&mut self, id: u32) -> usize {
         assert!(self.has_free_space());
-        match self.entities_ids.binary_search(&id) {
-            Ok(_) => panic!("There is already entity with id {} in the page", id),
-            Err(new_index) => self.entities_ids.insert(new_index, id),
-        }
+        self.entities_ids.push(id);
+        self.entities_ids.len() - 1
     }
 
-    pub(crate) fn remove_entity_id(&mut self, id: u32) {
-        let index = self.get_entity_index_by_id(id);
-        self.remove_entity_at_index(index);
-    }
-
-    pub(crate) fn remove_entity_at_index(&mut self, index: usize) {
-        self.entities_ids.remove(index);
-    }
-
-    #[inline(always)]
-    pub(crate) fn get_entity_index_by_id(&self, id: u32) -> usize {
-        match self.entities_ids.binary_search(&id) {
-            Ok(index) => index,
-            Err(_) => panic!("There is no entity with id {}", id),
+    pub(crate) fn swap_remove_entity_at_index(
+        &mut self,
+        index: usize,
+    ) -> Option<SwapRemoveInfo> {
+        self.entities_ids.swap_remove(index);
+        if index < self.entities_ids.len() {
+            Some(SwapRemoveInfo {
+                swapped_id: self.entities_ids[index],
+                swapped_index: self.entities_ids.len(),
+            })
+        } else {
+            None
         }
     }
 

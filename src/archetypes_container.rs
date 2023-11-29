@@ -70,26 +70,16 @@ impl ArchetypesContainer {
             let page_index = *page_index;
             let page = &mut self.pages[page_index];
             if page.has_free_space() {
-                page.push_entity_id(entity_id);
+                let index_in_page = page.add_entity_id(entity_id);
 
-                return EntityInArchetype { page_index };
+                return EntityInArchetype { page_index, index_in_page };
             }
         }
 
         let page_index = self.reserve_page_for_archetype(archetype_index);
-        self.pages[page_index].push_entity_id(entity_id);
+        let index_in_page = self.pages[page_index].add_entity_id(entity_id);
 
-        EntityInArchetype { page_index }
-    }
-
-    pub fn remove_entity(
-        &mut self,
-        entity_id: u32,
-        entity_in_archetype: EntityInArchetype,
-    ) {
-        let page = &mut self.pages[entity_in_archetype.page_index];
-
-        page.remove_entity_id(entity_id);
+        EntityInArchetype { page_index, index_in_page }
     }
 
     pub fn get_page_view(&self, page_index: usize) -> ArchetypeDataPageView {
@@ -114,6 +104,11 @@ impl ArchetypesContainer {
     #[inline]
     pub fn get_pages(&self) -> &[ArchetypeDataPage] {
         &self.pages
+    }
+
+    #[inline]
+    pub(crate) fn get_pages_mut(&mut self) -> &mut [ArchetypeDataPage] {
+        &mut self.pages
     }
 
     #[inline]

@@ -16,6 +16,10 @@ mod test {
         angle: f64,
     }
 
+    impl Component for usize {
+
+    }
+
     #[test]
     fn write_and_read_query_test() {
         let mut store = Store::new();
@@ -72,5 +76,38 @@ mod test {
         }
 
         assert_eq!(iter_count, expected_data.len());
+    }
+
+    #[test]
+    fn query_will_not_iterate_destroyed_entities() {
+        const INIT_ENTITIES_COUNT: usize = 10;
+        let mut store = Store::new();
+        let arch = ArchetypeBuilder::new()
+            .include_components::<usize>()
+            .build();
+
+        let entities_to_destroy = [0, 5, 9];
+        let mut expected_to_iterate = Vec::new();
+
+        for i in 0..INIT_ENTITIES_COUNT {
+            let e = store.create_entity(&arch);
+            let (v,) = store.get_components_refs_mut::<usize>(e);
+            (*v) = i;
+
+            if entities_to_destroy.contains(&i) {
+                store.destroy_entity(e);
+            } else {
+                expected_to_iterate.push(e)
+            }
+        }
+
+        let mut iterated_entities = Vec::new();
+        for (e, (v,)) in store.query_iter(&mut ComponentsReadOnlyQuery::<usize>::new()) {
+            iterated_entities.push(e);
+
+            assert!(entities_to_destroy.contains(v) == false);
+        }
+
+        assert!(expected_to_iterate.iter().all(|e| iterated_entities.contains(e)));
     }
 }
