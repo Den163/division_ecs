@@ -13,7 +13,7 @@ pub struct Archetype {
     component_count: usize,
 }
 
-pub trait ComponentTupleToArchetype : ComponentsTuple {
+pub trait ComponentTupleToArchetype: ComponentsTuple {
     fn into_archetype() -> Archetype;
 }
 
@@ -82,14 +82,11 @@ impl Archetype {
             return false;
         }
 
-        for i in 0..self.component_count {
-            let is_different_id = unsafe { *self.ids.add(i) != *other.ids.add(i) };
-            if is_different_id {
-                return false;
-            }
-        }
+        let ids = unsafe { std::slice::from_raw_parts(self.ids, self.component_count) };
+        let other_ids =
+            unsafe { std::slice::from_raw_parts(other.ids, other.component_count) };
 
-        return true;
+        return ids == other_ids;
     }
 
     #[inline(always)]
