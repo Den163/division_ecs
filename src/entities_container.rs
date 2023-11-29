@@ -97,7 +97,7 @@ impl EntitiesContainer {
         self.validate_entity_version_with_panic(entity);
 
         let id = entity.id;
-        assert!(self.is_alive(entity), "Entity is already dead");
+        debug_assert!(self.is_alive(entity), "Entity is already dead");
         unsafe {
             bitvec_utils::toggle_bit(self.entity_to_is_alive_bitvec, id as usize);
         }
@@ -110,7 +110,7 @@ impl EntitiesContainer {
     }
 
     pub fn is_alive(&self, entity: Entity) -> bool {
-        self.validate_id_with_panic(entity.id);
+        self.debug_validate_id_with_panic(entity.id);
 
         unsafe {
             self.validate_entity_version(entity)
@@ -142,15 +142,15 @@ impl EntitiesContainer {
     }
 
     fn validate_entity_version_with_panic(&self, entity: Entity) {
-        self.validate_id_with_panic(entity.id);
-        assert!(
+        self.debug_validate_id_with_panic(entity.id);
+        debug_assert!(
             self.validate_entity_version(entity),
             "Invalid entity version (It's dead)"
         );
     }
 
-    pub fn validate_id_with_panic(&self, id: u32) {
-        assert!(
+    pub fn debug_validate_id_with_panic(&self, id: u32) {
+        debug_assert!(
             self.validate_id(id),
             "Invalid entity id (Maybe it's from another world)"
         );

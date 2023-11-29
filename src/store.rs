@@ -78,7 +78,7 @@ impl Store {
     where
         T: ComponentsTuple,
     {
-        assert!(self.is_alive(entity));
+        debug_assert!(self.is_alive(entity));
 
         let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
         let page_view = self.get_page_view(entity_in_archetype.page_index);
@@ -90,7 +90,7 @@ impl Store {
     where
         T: ComponentsTuple,
     {
-        assert!(self.is_alive(entity));
+        debug_assert!(self.is_alive(entity));
 
         let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
         let page_view = self.get_page_view(entity_in_archetype.page_index);
@@ -115,13 +115,13 @@ impl Store {
 
     #[inline(always)]
     fn get_entity_in_archetype_ref(&self, id: u32) -> &EntityInArchetype {
-        self.entities_container.validate_id_with_panic(id);
+        self.entities_container.debug_validate_id_with_panic(id);
         unsafe { &*self.entity_to_archetype.add(id as usize) }
     }
 
     #[inline(always)]
     fn get_entity_in_archetype_ref_mut(&mut self, id: u32) -> &mut EntityInArchetype {
-        self.entities_container.validate_id_with_panic(id);
+        self.entities_container.debug_validate_id_with_panic(id);
         unsafe { &mut *self.entity_to_archetype.add(id as usize) }
     }
 }

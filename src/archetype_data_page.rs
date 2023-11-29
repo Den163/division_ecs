@@ -51,7 +51,7 @@ impl ArchetypeDataPage {
     }
 
     pub(crate) fn add_entity_id(&mut self, id: u32) -> usize {
-        assert!(self.has_free_space());
+        debug_assert!(self.has_free_space());
         self.entities_ids.push(id);
         self.entities_ids.len() - 1
     }
