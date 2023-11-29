@@ -12,7 +12,7 @@ pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
 
-    entity_to_archetype: *mut EntityInArchetype,
+    entity_in_archetypes: *mut EntityInArchetype,
 }
 
 impl Store {
@@ -24,7 +24,7 @@ impl Store {
         Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
-            entity_to_archetype: unsafe { mem_utils::alloc_zeroed(capacity) },
+            entity_in_archetypes: unsafe { mem_utils::alloc_zeroed(capacity) },
         }
     }
 
@@ -38,7 +38,7 @@ impl Store {
     }
 
     #[inline(always)]
-    pub fn create_entity(&mut self, archetype: &Archetype) -> Entity {
+    pub fn create_entity_with_archetype(&mut self, archetype: &Archetype) -> Entity {
         let will_entities_grow = self.entities_container.will_grow_with_entity_create();
         let old_capacity = self.entities_container.capacity();
         let entity = self.entities_container.create_entity();
@@ -56,13 +56,13 @@ impl Store {
     pub fn destroy_entity(&mut self, entity: Entity) {
         let entity_in_arch = *self.get_entity_in_archetype_ref(entity.id);
         let pages = self.archetypes_container.get_pages_mut();
-        let page = &mut pages[entity_in_arch.page_index];
+        let page = &mut pages[entity_in_arch.page_index as usize];
 
         if let Some(swap_remove) =
-            page.swap_remove_entity_at_index(entity_in_arch.index_in_page)
+            page.swap_remove_entity_at_index(entity_in_arch.index_in_page as usize)
         {
             let swapped = self.get_entity_in_archetype_ref_mut(swap_remove.swapped_id);
-            swapped.index_in_page = swap_remove.swapped_index;
+            swapped.index_in_page = swap_remove.swapped_index as u32;
         }
 
         self.entities_container.destroy_entity(entity)
@@ -81,8 +81,8 @@ impl Store {
         debug_assert!(self.is_alive(entity));
 
         let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
-        let page_view = self.get_page_view(entity_in_archetype.page_index);
-        page_view.get_components_refs::<T>(entity_in_archetype.index_in_page)
+        let page_view = self.get_page_view(entity_in_archetype.page_index as usize);
+        page_view.get_components_refs::<T>(entity_in_archetype.index_in_page as usize)
     }
 
     #[inline(always)]
@@ -93,8 +93,8 @@ impl Store {
         debug_assert!(self.is_alive(entity));
 
         let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
-        let page_view = self.get_page_view(entity_in_archetype.page_index);
-        page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page)
+        let page_view = self.get_page_view(entity_in_archetype.page_index as usize);
+        page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page as usize)
     }
 
     #[inline(always)]
@@ -104,9 +104,9 @@ impl Store {
 
     #[inline(always)]
     fn grow_entities_in_archetype(&mut self, old_capacity: usize) {
-        self.entity_to_archetype = unsafe {
+        self.entity_in_archetypes = unsafe {
             mem_utils::realloc_with_uninit_capacity_zeroing(
-                self.entity_to_archetype,
+                self.entity_in_archetypes,
                 old_capacity,
                 self.entities_container.capacity(),
             )
@@ -116,13 +116,13 @@ impl Store {
     #[inline(always)]
     fn get_entity_in_archetype_ref(&self, id: u32) -> &EntityInArchetype {
         self.entities_container.debug_validate_id_with_panic(id);
-        unsafe { &*self.entity_to_archetype.add(id as usize) }
+        unsafe { &*self.entity_in_archetypes.add(id as usize) }
     }
 
     #[inline(always)]
     fn get_entity_in_archetype_ref_mut(&mut self, id: u32) -> &mut EntityInArchetype {
         self.entities_container.debug_validate_id_with_panic(id);
-        unsafe { &mut *self.entity_to_archetype.add(id as usize) }
+        unsafe { &mut *self.entity_in_archetypes.add(id as usize) }
     }
 }
 
@@ -130,7 +130,7 @@ impl Drop for Store {
     fn drop(&mut self) {
         unsafe {
             mem_utils::dealloc(
-                self.entity_to_archetype,
+                self.entity_in_archetypes,
                 self.entities_container.capacity(),
             )
         }

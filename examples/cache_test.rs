@@ -114,7 +114,7 @@ fn populate_ecs(registry: &mut Store, data: &Vec<Box<AosObject>>) {
         .build();
 
     for d in data {
-        let e = registry.create_entity(&pos_rot_arch);
+        let e = registry.create_entity_with_archetype(&pos_rot_arch);
 
         let (pos, rot, unit) =
             registry.get_components_refs_mut::<(Position, Rotation, MovingUnit)>(e);

@@ -23,7 +23,7 @@ mod tests {
         let mut entities = Vec::new();
 
         for i in 0..entities_capacity {
-            let entity = store.create_entity(&archetype);
+            let entity = store.create_entity_with_archetype(&archetype);
             entities.push(entity);
 
             let (u64_v, u128_v) = store.get_components_refs_mut::<(u64, u128)>(entity);
@@ -45,7 +45,7 @@ mod tests {
         let mut store = Store::new();
         let archetype = Archetype::with_components::<(u64, u128)>();
 
-        let entity = store.create_entity(&archetype);
+        let entity = store.create_entity_with_archetype(&archetype);
         store.get_components_refs_mut::<f32>(entity);
     }
 
@@ -55,7 +55,7 @@ mod tests {
         let mut registry = Store::new();
         let archetype = Archetype::with_components::<u64>();
 
-        let entity = registry.create_entity(&archetype);
+        let entity = registry.create_entity_with_archetype(&archetype);
         registry.destroy_entity(entity);
 
         registry.get_components_refs_mut::<u64>(entity);

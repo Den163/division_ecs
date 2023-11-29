@@ -69,15 +69,17 @@ impl ArchetypesContainer {
         for page_index in pages.into_iter().rev() {
             let page_index = *page_index;
             let page = &mut self.pages[page_index];
+            let page_index = page_index as u32;
             if page.has_free_space() {
-                let index_in_page = page.add_entity_id(entity_id);
+                let index_in_page = page.add_entity_id(entity_id) as u32;
 
                 return EntityInArchetype { page_index, index_in_page };
             }
         }
 
         let page_index = self.reserve_page_for_archetype(archetype_index);
-        let index_in_page = self.pages[page_index].add_entity_id(entity_id);
+        let index_in_page = self.pages[page_index].add_entity_id(entity_id) as u32;
+        let page_index = page_index as u32;
 
         EntityInArchetype { page_index, index_in_page }
     }

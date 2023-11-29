@@ -34,7 +34,7 @@ mod test {
         let mut entities = Vec::new();
 
         for (_, _, arch) in &expected_data {
-            store.create_entity(arch);
+            store.create_entity_with_archetype(arch);
         }
 
         let mut write_query = ComponentsWriteQuery::<(Position, Rotation)>::new();
@@ -53,8 +53,8 @@ mod test {
 
         let other_arch = Archetype::with_components::<(f32, u64)>();
 
-        store.create_entity(&other_arch);
-        store.create_entity(&other_arch);
+        store.create_entity_with_archetype(&other_arch);
+        store.create_entity_with_archetype(&other_arch);
 
         let mut read_query = ComponentsReadOnlyQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
@@ -81,7 +81,7 @@ mod test {
         let mut expected_to_iterate = Vec::new();
 
         for i in 0..INIT_ENTITIES_COUNT {
-            let e = store.create_entity(&arch);
+            let e = store.create_entity_with_archetype(&arch);
             let (v,) = store.get_components_refs_mut::<usize>(e);
             (*v) = i;
 
