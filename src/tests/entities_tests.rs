@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, ArchetypeBuilder, Component, Store};
+    use crate::{Archetype, Component, Store};
 
     impl Component for u32 {}
 
@@ -118,6 +118,6 @@ mod tests {
     }
 
     fn create_archetype_stub() -> Archetype {
-        ArchetypeBuilder::new().include_components::<u32>().build()
+        Archetype::with_components::<u32>()
     }
 }

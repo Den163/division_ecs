@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{component_type::ComponentType, mem_utils};
+use crate::{component_type::ComponentType, mem_utils, tuple::ComponentsTuple};
 
 #[derive(Debug)]
 pub struct Archetype {
@@ -13,9 +13,17 @@ pub struct Archetype {
     component_count: usize,
 }
 
+pub trait ComponentTupleToArchetype : ComponentsTuple {
+    fn into_archetype() -> Archetype;
+}
+
 impl Archetype {
-    pub(crate) fn new(components: &mut [ComponentType]) -> Self {
-        let component_count = components.len();
+    pub fn with_components<T: ComponentTupleToArchetype>() -> Self {
+        T::into_archetype()
+    }
+
+    pub(crate) fn new(sorted_components: &[ComponentType]) -> Self {
+        let component_count = sorted_components.len();
         assert!(component_count > 0);
 
         let (ids, sizes, aligns): (*mut TypeId, *mut usize, *mut usize) = unsafe {
@@ -26,7 +34,7 @@ impl Archetype {
             )
         };
 
-        for (i, comp) in components.iter().enumerate() {
+        for (i, comp) in sorted_components.iter().enumerate() {
             unsafe {
                 *ids.add(i) = comp.id();
                 *sizes.add(i) = comp.size();
@@ -183,3 +191,19 @@ impl Drop for Archetype {
         }
     }
 }
+
+macro_rules! tuple_into_archetype_impl {
+    ($($T: tt),*) => {
+        #[allow(unused_parens)]
+        impl<$($T: 'static + Component),*> $crate::archetype::ComponentTupleToArchetype for ($($T),*) {
+            fn into_archetype() -> $crate::Archetype
+            {
+                let components = &mut $crate::component_types!( $($T),* );
+                components.sort_by_key(|a| a.id());
+                $crate::Archetype::new(components)
+            }
+        }
+    };
+}
+
+pub(crate) use tuple_into_archetype_impl;

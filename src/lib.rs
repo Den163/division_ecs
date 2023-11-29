@@ -23,6 +23,7 @@ mod tuple;
 pub mod macros;
 
 pub(crate) use archetype_builder::archetype_builder_tuple_impl;
+pub(crate) use archetype::tuple_into_archetype_impl;
 
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;

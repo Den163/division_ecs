@@ -99,6 +99,7 @@ macro_rules! components_tuple_impl {
         }
 
         $crate::archetype_builder_tuple_impl!($($T),*);
+        $crate::tuple_into_archetype_impl!($($T),*);
     };
 
     (@type_to_usize, $T: tt) => { usize };

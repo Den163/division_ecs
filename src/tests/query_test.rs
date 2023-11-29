@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod test {
     use crate::{
-        components_query::ComponentsReadOnlyQuery, ArchetypeBuilder, Component,
-        ComponentsWriteQuery, Store,
+        components_query::ComponentsReadOnlyQuery, Component,
+        ComponentsWriteQuery, Store, Archetype,
     };
 
     #[derive(Debug, PartialEq, Component, Clone, Copy)]
@@ -23,13 +23,8 @@ mod test {
     #[test]
     fn write_and_read_query_test() {
         let mut store = Store::new();
-        let arch0 = ArchetypeBuilder::new()
-            .include_components::<(Position, Rotation)>()
-            .build();
-
-        let arch1 = ArchetypeBuilder::new()
-            .include_components::<(Position, Rotation, u64)>()
-            .build();
+        let arch0 = Archetype::with_components::<(Position, Rotation)>();
+        let arch1 = Archetype::with_components::<(Position, Rotation, u64)>();
 
         let expected_data = [
             (Position { x: 10., y: 20. }, Rotation { angle: 90. }, arch0),
@@ -56,9 +51,7 @@ mod test {
         }
         assert_eq!(iter_count, expected_data.len());
 
-        let other_arch = ArchetypeBuilder::new()
-            .include_components::<(f32, u64)>()
-            .build();
+        let other_arch = Archetype::with_components::<(f32, u64)>();
 
         store.create_entity(&other_arch);
         store.create_entity(&other_arch);
@@ -82,9 +75,7 @@ mod test {
     fn query_will_not_iterate_destroyed_entities() {
         const INIT_ENTITIES_COUNT: usize = 10;
         let mut store = Store::new();
-        let arch = ArchetypeBuilder::new()
-            .include_components::<usize>()
-            .build();
+        let arch = Archetype::with_components::<usize>();
 
         let entities_to_destroy = [0, 5, 9];
         let mut expected_to_iterate = Vec::new();

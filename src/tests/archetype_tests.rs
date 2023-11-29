@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{ArchetypeBuilder, Component};
+    use crate::{Archetype, Component, ArchetypeBuilder};
 
     #[derive(Component, Clone, Copy)]
     struct TestType1;
@@ -13,9 +13,7 @@ mod tests {
 
     #[test]
     fn archetype_has_component_when_it_build_with_it() {
-        let archetype = ArchetypeBuilder::new()
-            .include_components::<(TestType1, TestType3)>()
-            .build();
+        let archetype = Archetype::with_components::<(TestType1, TestType3)>();
 
         assert_eq!(archetype.component_count(), 2);
         assert!(archetype.has_component::<TestType1>());
@@ -25,26 +23,20 @@ mod tests {
 
     #[test]
     fn archetype_is_same_as_true_only_with_same_set_of_types() {
-        let a1 = ArchetypeBuilder::new()
-            .include_components::<(TestType1, TestType2)>()
-            .build();
+        let a1 = Archetype::with_components::<(TestType1, TestType2)>();
 
         let a2 = a1.clone();
 
         assert!(a1.is_same_as(&a2));
 
-        let a3 = ArchetypeBuilder::new()
-            .include_components::<(TestType1, TestType3)>()
-            .build();
+        let a3 = Archetype::with_components::<(TestType1, TestType3)>();
 
         assert!(a1.is_same_as(&a3) == false);
     }
 
     #[test]
     fn archetype_include_as_expected() {
-        let arch_to_extend = ArchetypeBuilder::new()
-            .include_components::<(TestType3, u64)>()
-            .build();
+        let arch_to_extend = Archetype::with_components::<(TestType3, u64)>();
 
         let arch = ArchetypeBuilder::new()
             .include_components::<(TestType1, TestType2)>()
@@ -53,21 +45,15 @@ mod tests {
 
         assert!(arch.is_include(&arch_to_extend));
 
-        let not_extended_archetype =
-            ArchetypeBuilder::new().include_components::<f32>().build();
+        let not_extended_archetype = Archetype::with_components::<f32>();
 
         assert!(arch.is_include(&not_extended_archetype) == false);
     }
 
     #[test]
     fn archetype_exclude_as_expected() {
-        let arch = ArchetypeBuilder::new()
-            .include_components::<(TestType1, u64)>()
-            .build();
-
-        let arch_to_be_excluded = ArchetypeBuilder::new()
-            .include_components::<(TestType2, TestType3)>()
-            .build();
+        let arch = Archetype::with_components::<(TestType1, u64)>();
+        let arch_to_be_excluded = Archetype::with_components::<(TestType2, TestType3)>();
 
         assert!(arch.is_exclude(&arch_to_be_excluded));
 
