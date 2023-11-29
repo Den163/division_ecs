@@ -1,6 +1,6 @@
 use std::{
     any::TypeId,
-    hash::{Hash, Hasher},
+    hash::{Hash, Hasher}, ptr::null_mut,
 };
 
 use crate::{component_type::ComponentType, mem_utils, tuple::ComponentsTuple};
@@ -50,6 +50,15 @@ impl Archetype {
         }
     }
 
+    pub(crate) fn empty() -> Archetype {
+        Archetype {
+            ids: null_mut(),
+            sizes: null_mut(),
+            aligns: null_mut(),
+            component_count: 0
+        }
+    }
+
     #[inline(always)]
     pub fn has_component<T: 'static>(&self) -> bool {
         self.find_component_index(TypeId::of::<T>()).is_some()
@@ -77,9 +86,18 @@ impl Archetype {
         self.component_count
     }
 
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.component_count == 0
+    }
+
     pub fn is_same_as(&self, other: &Self) -> bool {
         if self.component_count != other.component_count {
             return false;
+        }
+
+        if self.is_empty() {
+            return true;
         }
 
         let ids = unsafe { std::slice::from_raw_parts(self.ids, self.component_count) };

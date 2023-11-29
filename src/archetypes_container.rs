@@ -28,9 +28,14 @@ impl ArchetypesContainer {
     const ARCHETYPE_PAGE_DEFAULT_CAPACITY: usize = 5;
 
     pub fn new() -> ArchetypesContainer {
-        let archetypes = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
-        let archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
-        let archetype_layouts = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
+        let mut archetypes = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
+        archetypes.push(Archetype::empty());
+
+        let mut archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
+        archetype_to_pages.push(ArchetypePages { pages: Vec::new() });
+
+        let mut archetype_layouts = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
+        archetype_layouts.push(ArchetypeDataLayout::empty());
 
         let pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
             .map(|_| ArchetypeDataPage::new())
@@ -118,6 +123,27 @@ impl ArchetypesContainer {
         &self.archetype_to_pages[archetype_index].pages
     }
 
+    pub(crate) fn free_page(&mut self, page_index: usize) {
+        let archetype_index = self.page_to_archetype[page_index];
+        if archetype_index < 0 {
+            return;
+        }
+        let archetype_index = archetype_index as usize;
+        let arch_pages = &mut self.archetype_to_pages[archetype_index];
+
+        for i in 0..arch_pages.pages.len() {
+            if arch_pages.pages[i] == page_index {
+                arch_pages.pages.remove(i);
+                if arch_pages.pages.len() == 0 {
+                    self.free_archetypes.push(archetype_index);
+                }
+                break;
+            }
+        }
+
+        self.free_pages.push(page_index);
+    }
+
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
         for (i, arch) in self.archetypes.iter().enumerate() {
             if arch.is_same_as(&archetype) {
@@ -133,14 +159,11 @@ impl ArchetypesContainer {
                 free_idx
             }
             None => {
-                let new_size = self.archetypes.len() + 1;
-                self.archetype_layouts
-                    .resize_with(new_size, || ArchetypeDataLayout::new(&archetype));
-                self.archetypes.resize_with(new_size, || archetype.clone());
-                self.archetype_to_pages
-                    .resize_with(new_size, || ArchetypePages { pages: Vec::new() });
+                self.archetypes.push(archetype.clone());
+                self.archetype_layouts.push(ArchetypeDataLayout::new(&archetype));
+                self.archetype_to_pages.push(ArchetypePages { pages: Vec::new() });
 
-                new_size - 1
+                self.archetypes.len() - 1
             }
         }
     }

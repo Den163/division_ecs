@@ -56,13 +56,19 @@ impl Store {
     pub fn destroy_entity(&mut self, entity: Entity) {
         let entity_in_arch = *self.get_entity_in_archetype_ref(entity.id);
         let pages = self.archetypes_container.get_pages_mut();
-        let page = &mut pages[entity_in_arch.page_index as usize];
+        let page_index = entity_in_arch.page_index as usize;
+        let page = &mut pages[page_index];
+        let page_will_empty = page.entities_count() == 1;
 
         if let Some(swap_remove) =
             page.swap_remove_entity_at_index(entity_in_arch.index_in_page as usize)
         {
             let swapped = self.get_entity_in_archetype_ref_mut(swap_remove.swapped_id);
             swapped.index_in_page = swap_remove.swapped_index as u32;
+        }
+
+        if page_will_empty {
+            self.archetypes_container.free_page(page_index);
         }
 
         self.entities_container.destroy_entity(entity)

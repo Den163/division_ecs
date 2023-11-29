@@ -1,3 +1,5 @@
+use std::ptr::null_mut;
+
 use crate::{archetype::Archetype, archetype_data_page::ArchetypeDataPage, mem_utils};
 
 #[derive(Debug)]
@@ -48,6 +50,14 @@ impl ArchetypeDataLayout {
             component_offsets_ptr: component_offsets,
             component_count,
             entities_capacity,
+        }
+    }
+
+    pub fn empty() -> ArchetypeDataLayout {
+        ArchetypeDataLayout {
+            component_offsets_ptr: null_mut(),
+            component_count: 0,
+            entities_capacity: 0
         }
     }
 
