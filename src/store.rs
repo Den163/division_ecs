@@ -72,7 +72,7 @@ impl Store {
     where
         T: ComponentsTuple,
     {
-        let (entity_in_archetype, page_view) = self.get_components_refs_info::<T>(entity);
+        let (entity_in_archetype, page_view) = self.get_components_refs_info(entity);
         page_view.get_components_refs::<T>(entity_in_archetype.index_in_page as usize)
     }
 
@@ -84,11 +84,11 @@ impl Store {
     where
         T: ComponentsTuple,
     {
-        let (entity_in_archetype, page_view) = self.get_components_refs_info::<T>(entity);
+        let (entity_in_archetype, page_view) = self.get_components_refs_info(entity);
         page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page as usize)
     }
 
-    fn get_components_refs_info<'a, T>(
+    fn get_components_refs_info<'a>(
         &'a self,
         entity: Entity,
     ) -> (EntityInArchetype, ArchetypeDataPageView<'a>) {
