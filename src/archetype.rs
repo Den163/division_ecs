@@ -71,6 +71,17 @@ impl Archetype {
         })
     }
 
+    pub fn find_component_index_typed_checked<T: 'static>(&self) -> usize {
+        let index = self.find_component_index(std::any::TypeId::of::<T>());
+        match index {
+            Some(i) => i,
+            None => {
+                let type_name = std::any::type_name::<T>();
+                panic!("There is no type {type_name} in the archetype");
+            }
+        }
+    }
+
     pub fn find_component_index(&self, type_id: TypeId) -> Option<usize> {
         unsafe {
             let slice = &*std::ptr::slice_from_raw_parts(self.ids, self.component_count);
@@ -89,6 +100,11 @@ impl Archetype {
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.component_count == 0
+    }
+
+    #[inline]
+    pub(crate) unsafe fn component_sizes(&self) -> *const usize {
+        self.sizes
     }
 
     pub fn is_same_as(&self, other: &Self) -> bool {

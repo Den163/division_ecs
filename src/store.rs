@@ -37,38 +37,33 @@ impl Store {
         self.entities_container.capacity()
     }
 
-    #[inline(always)]
+    pub fn create_entity(&mut self) -> Entity {
+        let creation = self.entities_container.create_entity();
+        let entity = creation.entity;
+
+        entity
+    }
+
     pub fn create_entity_with_archetype(&mut self, archetype: &Archetype) -> Entity {
-        let will_entities_grow = self.entities_container.will_grow_with_entity_create();
-        let old_capacity = self.entities_container.capacity();
-        let entity = self.entities_container.create_entity();
+        let creation = self.entities_container.create_entity();
+        let entity = creation.entity;
         let entity_in_arch = self.archetypes_container.add_entity(entity.id, archetype);
 
-        if will_entities_grow {
-            self.grow_entities_in_archetype(old_capacity);
+        if creation.container_was_grow() {
+            self.grow_entities_in_archetype(creation.capacity_before);
         }
         *self.get_entity_in_archetype_ref_mut(entity.id) = entity_in_arch;
 
         entity
     }
 
-    #[inline(always)]
     pub fn destroy_entity(&mut self, entity: Entity) {
         let entity_in_arch = *self.get_entity_in_archetype_ref(entity.id);
-        let pages = self.archetypes_container.get_pages_mut();
-        let page_index = entity_in_arch.page_index as usize;
-        let page = &mut pages[page_index];
-        let page_will_empty = page.entities_count() == 1;
+        let swap_remove = self.archetypes_container.swap_remove_entity(entity_in_arch);
 
-        if let Some(swap_remove) =
-            page.swap_remove_entity_at_index(entity_in_arch.index_in_page as usize)
-        {
-            let swapped = self.get_entity_in_archetype_ref_mut(swap_remove.swapped_id);
-            swapped.index_in_page = swap_remove.swapped_index as u32;
-        }
-
-        if page_will_empty {
-            self.archetypes_container.free_page(page_index);
+        if let Some(swap_remove) = swap_remove {
+            let swapped = self.get_entity_in_archetype_ref_mut(swap_remove.id_to_replace);
+            swapped.index_in_page = entity_in_arch.index_in_page;
         }
 
         self.entities_container.destroy_entity(entity)

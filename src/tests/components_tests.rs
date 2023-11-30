@@ -6,7 +6,32 @@ impl Component for u128 {}
 
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, Store};
+    use crate::{Archetype, Store, Component};
+    use std::mem::MaybeUninit;
+
+    #[derive(Component, Clone, Copy)]
+    struct TestComponent1 {
+        value: i32,
+    }
+
+    #[derive(Component, Clone, Copy)]
+    struct TestComponent2 {
+        value: f64,
+    }
+
+    impl TestComponent1 {
+        pub fn new(i: usize) -> TestComponent1 {
+            TestComponent1 { value: i as i32 }
+        }
+    }
+
+    impl TestComponent2 {
+        pub fn new(i: usize) -> TestComponent2 {
+            TestComponent2 {
+                value: (i * 2) as f64,
+            }
+        }
+    }
 
     #[test]
     fn registry_set_value_for_entity_as_expected() {
@@ -51,6 +76,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn registry_get_component_ref_mut_panics_if_entity_doesnt_alive() {
         let mut registry = Store::new();
         let archetype = Archetype::with_components::<u64>();
@@ -59,5 +85,43 @@ mod tests {
         registry.destroy_entity(entity);
 
         registry.get_components_refs_mut::<u64>(entity);
+    }
+
+    #[test]
+    fn registry_destroy_component_after_internal_page_swap_remove_as_expected() {
+        let mut registry = Store::new();
+        let archetype = Archetype::with_components::<(TestComponent1, TestComponent2)>();
+
+        let mut entity_to_swap_remove = MaybeUninit::uninit();
+        let mut swapped_entity = MaybeUninit::uninit();
+        for i in 0..4 {
+            let e = registry.create_entity_with_archetype(&archetype);
+            let (c1, c2) =
+                registry.get_components_refs_mut::<(TestComponent1, TestComponent2)>(e);
+
+            (*c1, *c2) = (TestComponent1::new(i), TestComponent2::new(i));
+
+            match i {
+                1 => {
+                    entity_to_swap_remove.write(e);
+                }
+                3 => {
+                    swapped_entity.write((e, *c1, *c2));
+                }
+                _ => {}
+            }
+        }
+
+        let entity_to_swap_remove = unsafe { entity_to_swap_remove.assume_init() };
+        let swapped_entity = unsafe { swapped_entity.assume_init() };
+        let (swapped_entity, expected1, expected2) = swapped_entity;
+
+        registry.destroy_entity(entity_to_swap_remove);
+
+        let (actual1, actual2) = registry
+            .get_components_refs_mut::<(TestComponent1, TestComponent2)>(swapped_entity);
+
+        assert_eq!(actual1.value, expected1.value);
+        assert_eq!(actual2.value, expected2.value);
     }
 }

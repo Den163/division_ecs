@@ -23,11 +23,11 @@ impl<T> ResourceStore<T> {
     }
 
     pub fn create(&mut self, resource: T) -> Entity {
-        let will_grow = self.entities_container.will_grow_with_entity_create();
         let old_capacity = self.entities_container.capacity();
-        let e = self.entities_container.create_entity();
+        let creation = self.entities_container.create_entity();
+        let entity = creation.entity;
 
-        if will_grow {
+        if creation.container_was_grow() {
             self.elements = unsafe {
                 mem_utils::realloc(
                     self.elements,
@@ -38,20 +38,17 @@ impl<T> ResourceStore<T> {
         }
 
         unsafe {
-            std::ptr::write(
-                self.elements.add(e.id as usize),
-                resource,
-            );
+            self.elements.add(entity.id as usize).write(resource);
         }
 
-        e
+        entity
     }
 
     pub fn release(&mut self, entity: Entity) -> T {
         debug_assert!(self.entities_container.is_alive(entity));
         self.entities_container.destroy_entity(entity);
         unsafe {
-            std::ptr::read(self.elements.add(entity.id as usize))
+            self.elements.add(entity.id as usize).read()
         }
     }
 }

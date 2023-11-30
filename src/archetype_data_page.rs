@@ -1,4 +1,4 @@
-use crate::{archetype_data_layout::ArchetypeDataLayout, mem_utils};
+use crate::{archetype_data_layout::ArchetypeDataLayout, mem_utils, Archetype};
 
 /// Reusable page of the components data with a fixed size (4096 Bytes), related to the concrete archetype.
 /// It contains data for all components of the some entities subset
@@ -9,8 +9,7 @@ pub struct ArchetypeDataPage {
 }
 
 pub(crate) struct SwapRemoveInfo {
-    pub swapped_id: u32,
-    pub swapped_index: usize,
+    pub id_to_replace: u32,
 }
 
 impl ArchetypeDataPage {
@@ -59,15 +58,42 @@ impl ArchetypeDataPage {
     pub(crate) fn swap_remove_entity_at_index(
         &mut self,
         index: usize,
+        archetype: &Archetype,
+        layout: &ArchetypeDataLayout,
     ) -> Option<SwapRemoveInfo> {
         self.entities_ids.swap_remove(index);
-        if index < self.entities_ids.len() {
+        let last_swapped_index = self.entities_ids.len();
+        if index < last_swapped_index {
+            unsafe {
+                self.move_component_data(last_swapped_index, index, archetype, layout);
+            }
+            
             Some(SwapRemoveInfo {
-                swapped_id: self.entities_ids[index],
-                swapped_index: self.entities_ids.len(),
+                id_to_replace: self.entities_ids[index],
             })
         } else {
             None
+        }
+    }
+
+    #[inline]
+    unsafe fn move_component_data(
+        &mut self,
+        src_entity_index: usize,
+        dst_entity_index: usize,
+        archetype: &Archetype,
+        layout: &ArchetypeDataLayout,
+    ) {
+        let sizes = archetype.component_sizes();
+        let offsets = layout.component_offsets();
+
+        for i in 0..archetype.component_count() {
+            let s = *sizes.add(i);
+            let o = *offsets.add(i);
+
+            let src_comp = self.get_component_data_ptr(src_entity_index, o, s);
+            let dst_comp = self.get_component_data_ptr_mut(dst_entity_index, o, s);
+            src_comp.copy_to_nonoverlapping(dst_comp, s);
         }
     }
 

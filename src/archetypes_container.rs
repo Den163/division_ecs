@@ -1,6 +1,7 @@
 use crate::{
-    archetype::Archetype, archetype_data_layout::ArchetypeDataLayout,
-    archetype_data_page::ArchetypeDataPage,
+    archetype::Archetype,
+    archetype_data_layout::ArchetypeDataLayout,
+    archetype_data_page::{ArchetypeDataPage, SwapRemoveInfo},
     archetype_data_page_view::ArchetypeDataPageView,
     entity_in_archetype::EntityInArchetype,
 };
@@ -78,7 +79,10 @@ impl ArchetypesContainer {
             if page.has_free_space() {
                 let index_in_page = page.add_entity_id(entity_id) as u32;
 
-                return EntityInArchetype { page_index, index_in_page };
+                return EntityInArchetype {
+                    page_index,
+                    index_in_page,
+                };
             }
         }
 
@@ -86,7 +90,34 @@ impl ArchetypesContainer {
         let index_in_page = self.pages[page_index].add_entity_id(entity_id) as u32;
         let page_index = page_index as u32;
 
-        EntityInArchetype { page_index, index_in_page }
+        EntityInArchetype {
+            page_index,
+            index_in_page,
+        }
+    }
+
+    pub fn swap_remove_entity(
+        &mut self,
+        entity_in_archetype: EntityInArchetype,
+    ) -> Option<SwapRemoveInfo> {
+        let page_index = entity_in_archetype.page_index as usize;
+        let page = &mut self.pages[page_index];
+        let page_will_empty = page.entities_count() == 1;
+
+        let arch_index = self.page_to_archetype[page_index] as usize;
+        let arch = &self.archetypes[arch_index];
+        let layout = &self.archetype_layouts[arch_index];
+        let swap_remove = page.swap_remove_entity_at_index(
+            entity_in_archetype.index_in_page as usize,
+            &arch,
+            &layout,
+        );
+
+        if page_will_empty {
+            self.free_page(page_index);
+        }
+
+        swap_remove
     }
 
     pub fn get_page_view(&self, page_index: usize) -> ArchetypeDataPageView {
@@ -114,16 +145,11 @@ impl ArchetypesContainer {
     }
 
     #[inline]
-    pub(crate) fn get_pages_mut(&mut self) -> &mut [ArchetypeDataPage] {
-        &mut self.pages
-    }
-
-    #[inline]
     pub fn get_archetype_page_indices(&self, archetype_index: usize) -> &[usize] {
         &self.archetype_to_pages[archetype_index].pages
     }
 
-    pub(crate) fn free_page(&mut self, page_index: usize) {
+    fn free_page(&mut self, page_index: usize) {
         let archetype_index = self.page_to_archetype[page_index];
         if archetype_index < 0 {
             return;
@@ -160,8 +186,10 @@ impl ArchetypesContainer {
             }
             None => {
                 self.archetypes.push(archetype.clone());
-                self.archetype_layouts.push(ArchetypeDataLayout::new(&archetype));
-                self.archetype_to_pages.push(ArchetypePages { pages: Vec::new() });
+                self.archetype_layouts
+                    .push(ArchetypeDataLayout::new(&archetype));
+                self.archetype_to_pages
+                    .push(ArchetypePages { pages: Vec::new() });
 
                 self.archetypes.len() - 1
             }

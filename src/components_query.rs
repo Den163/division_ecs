@@ -62,9 +62,11 @@ impl Store {
                 continue;
             }
 
-            let offsets = layouts[arch_idx].component_offsets();
-            query.components_offsets.push(T::get_offsets(arch, offsets));
-
+            unsafe {
+                let offsets = layouts[arch_idx].component_offsets();
+                query.components_offsets.push(T::get_offsets(arch, offsets));
+            }
+            
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
 

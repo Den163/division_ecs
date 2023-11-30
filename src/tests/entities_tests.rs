@@ -37,6 +37,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn destroy_entity_when_already_destroyed_panics() {
         let arch_stub = create_archetype_stub();
         let mut reg = Store::new();
@@ -50,6 +51,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn destroy_entity_with_invalid_id_should_panic() {
         let arch_stub = create_archetype_stub();
         let mut reg = Store::with_capacity(1);

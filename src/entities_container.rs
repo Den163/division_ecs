@@ -9,6 +9,12 @@ pub(crate) struct EntitiesContainer {
     next_free_id: u32,
 }
 
+pub(crate) struct EntityCreation {
+    pub entity: Entity,
+    pub capacity_before: usize,
+    pub capacity_after: usize,
+}
+
 impl EntitiesContainer {
     pub fn new(capacity: usize) -> EntitiesContainer {
         let (entity_to_version, entity_to_is_alive) = unsafe {
@@ -31,14 +37,6 @@ impl EntitiesContainer {
 
     pub fn capacity(&self) -> usize {
         self.capacity
-    }
-
-    pub fn will_grow_with_entity_create(&self) -> bool {
-        (self.gap_ids.len() == 0) & (self.next_free_id >= self.capacity as u32)
-    }
-
-    pub fn will_grow_with_id(&self, id: u32) -> bool {
-        id >= self.capacity as u32
     }
 
     pub fn grow(&mut self, new_capacity: usize) {
@@ -65,8 +63,14 @@ impl EntitiesContainer {
         self.capacity = new_capacity;
     }
 
-    pub fn create_entity(&mut self) -> Entity {
+    #[inline(always)]
+    fn will_grow_with_id(&self, id: u32) -> bool {
+        id >= self.capacity as u32
+    }
+
+    pub fn create_entity(&mut self) -> EntityCreation {
         let gap_count = self.gap_ids.len();
+        let capacity_before = self.capacity;
         let id = if gap_count > 0 {
             self.gap_ids.remove(gap_count - 1)
         } else {
@@ -90,7 +94,11 @@ impl EntitiesContainer {
             *version_ptr = version;
         }
 
-        Entity { id, version }
+        EntityCreation {
+            entity: Entity { id, version },
+            capacity_before,
+            capacity_after: self.capacity,
+        }
     }
 
     pub fn destroy_entity(&mut self, entity: Entity) {
@@ -163,5 +171,12 @@ impl Drop for EntitiesContainer {
             bitvec_utils::dealloc(self.entity_to_is_alive_bitvec, self.capacity);
             mem_utils::dealloc(self.entity_to_version, self.capacity);
         }
+    }
+}
+
+impl EntityCreation {
+    #[inline(always)]
+    pub fn container_was_grow(&self) -> bool {
+        self.capacity_after != self.capacity_before
     }
 }

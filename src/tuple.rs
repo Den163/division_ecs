@@ -52,7 +52,9 @@ macro_rules! components_tuple_impl {
             #[inline]
             fn get_offsets_checked(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
                 unsafe {(
-                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap())),*
+                    $(
+                        *layout_offsets.add(archetype.find_component_index_typed_checked::<$T>())
+                    ),*
                 )}
             }
 

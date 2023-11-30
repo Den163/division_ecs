@@ -62,7 +62,7 @@ impl ArchetypeDataLayout {
     }
 
     #[inline(always)]
-    pub fn component_offsets(&self) -> *const usize {
+    pub unsafe fn component_offsets(&self) -> *const usize {
         self.component_offsets_ptr
     }
 
