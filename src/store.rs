@@ -37,13 +37,6 @@ impl Store {
         self.entities_container.capacity()
     }
 
-    pub fn create_entity(&mut self) -> Entity {
-        let creation = self.entities_container.create_entity();
-        let entity = creation.entity;
-
-        entity
-    }
-
     pub fn create_entity_with_archetype(&mut self, archetype: &Archetype) -> Entity {
         let creation = self.entities_container.create_entity();
         let entity = creation.entity;
