@@ -72,28 +72,33 @@ impl Store {
     where
         T: ComponentsTuple,
     {
-        debug_assert!(self.is_alive(entity));
-
-        let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
-        let page_view = self.get_page_view(entity_in_archetype.page_index as usize);
+        let (entity_in_archetype, page_view) = self.get_components_refs_info::<T>(entity);
         page_view.get_components_refs::<T>(entity_in_archetype.index_in_page as usize)
     }
 
     #[inline(always)]
-    pub fn get_components_refs_mut<'a, T>(&'a self, entity: Entity) -> T::MutRefsTuple<'a>
+    pub fn get_components_refs_mut<'a, T>(
+        &'a mut self,
+        entity: Entity,
+    ) -> T::MutRefsTuple<'a>
     where
         T: ComponentsTuple,
     {
-        debug_assert!(self.is_alive(entity));
-
-        let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
-        let page_view = self.get_page_view(entity_in_archetype.page_index as usize);
+        let (entity_in_archetype, page_view) = self.get_components_refs_info::<T>(entity);
         page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page as usize)
     }
 
-    #[inline(always)]
-    fn get_page_view<'a>(&self, page_index: usize) -> ArchetypeDataPageView {
-        self.archetypes_container.get_page_view(page_index)
+    fn get_components_refs_info<'a, T>(
+        &'a self,
+        entity: Entity,
+    ) -> (EntityInArchetype, ArchetypeDataPageView<'a>) {
+        debug_assert!(self.is_alive(entity));
+
+        let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
+        (*entity_in_archetype, unsafe {
+            self.archetypes_container
+                .get_page_view_unchecked(entity_in_archetype.page_index as usize)
+        })
     }
 
     #[inline(always)]

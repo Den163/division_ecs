@@ -1,6 +1,7 @@
 use std::{
     any::TypeId,
-    hash::{Hash, Hasher}, ptr::null_mut,
+    hash::{Hash, Hasher},
+    ptr::null_mut,
 };
 
 use crate::{component_type::ComponentType, mem_utils, tuple::ComponentsTuple};
@@ -55,7 +56,7 @@ impl Archetype {
             ids: null_mut(),
             sizes: null_mut(),
             aligns: null_mut(),
-            component_count: 0
+            component_count: 0,
         }
     }
 
@@ -72,12 +73,15 @@ impl Archetype {
     }
 
     pub fn find_component_index_typed_checked<T: 'static>(&self) -> usize {
-        let index = self.find_component_index(std::any::TypeId::of::<T>());
-        match index {
-            Some(i) => i,
-            None => {
-                let type_name = std::any::type_name::<T>();
-                panic!("There is no type {type_name} in the archetype");
+        let type_id = std::any::TypeId::of::<T>();
+        unsafe {
+            let slice = &*std::ptr::slice_from_raw_parts(self.ids, self.component_count);
+            match slice.binary_search(&type_id) {
+                Ok(idx) => idx,
+                Err(_) => {
+                    let type_name = std::any::type_name::<T>();
+                    panic!("There is no type {type_name} in the archetype");
+                }
             }
         }
     }

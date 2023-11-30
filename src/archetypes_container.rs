@@ -120,12 +120,13 @@ impl ArchetypesContainer {
         swap_remove
     }
 
-    pub fn get_page_view(&self, page_index: usize) -> ArchetypeDataPageView {
-        let arch_idx = self.page_to_archetype[page_index] as usize;
+    #[inline(always)]
+    pub unsafe fn get_page_view_unchecked(&self, page_index: usize) -> ArchetypeDataPageView {
+        let arch_idx = *self.page_to_archetype.get_unchecked(page_index) as usize;
         ArchetypeDataPageView {
-            archetype: &self.archetypes[arch_idx],
-            layout: &self.archetype_layouts[arch_idx],
-            page: &self.pages[page_index],
+            archetype: self.archetypes.get_unchecked(arch_idx),
+            layout: self.archetype_layouts.get_unchecked(arch_idx),
+            page: self.pages.get_unchecked(page_index),
         }
     }
 
