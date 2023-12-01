@@ -6,17 +6,10 @@ pub trait ComponentsTuple {
     type OffsetsTuple;
     type RefsTuple<'a>;
     type MutRefsTuple<'a>;
-    const COMPONENT_COUNT: usize;
 
-    fn get_offsets(
-        archetype: &Archetype,
-        layout_offsets: *const usize,
-    ) -> Self::OffsetsTuple;
+    fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple;
 
-    fn get_offsets_checked(
-        archetype: &Archetype,
-        layout_offsets: *const usize,
-    ) -> Self::OffsetsTuple;
+    fn get_offsets_checked(archetype: &Archetype) -> Self::OffsetsTuple;
 
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
 
@@ -40,20 +33,28 @@ macro_rules! components_tuple_impl {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T)),*);
             type RefsTuple<'a> = ($(&'a $T,)*);
             type MutRefsTuple<'a> = ($(&'a mut $T,)*);
-            const COMPONENT_COUNT: usize = 0;
 
             #[inline]
-            fn get_offsets(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
+            fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
                 unsafe {(
-                    $(*layout_offsets.add(archetype.find_component_index(std::any::TypeId::of::<$T>()).unwrap_unchecked())),*
+                    $(
+                        *(
+                            archetype.component_offsets().add(
+                                archetype.find_component_index(std::any::TypeId::of::<$T>())
+                                        .unwrap_unchecked()
+                            )
+                        )
+                    ),*
                 )}
             }
 
             #[inline]
-            fn get_offsets_checked(archetype: &Archetype, layout_offsets: *const usize) -> Self::OffsetsTuple {
+            fn get_offsets_checked(archetype: &Archetype) -> Self::OffsetsTuple {
                 unsafe {(
                     $(
-                        *layout_offsets.add(archetype.find_component_index_typed_checked::<$T>())
+                        *(archetype.component_offsets().add(
+                            archetype.find_component_index_typed_checked::<$T>()
+                        ))
                     ),*
                 )}
             }

@@ -2,7 +2,6 @@ mod archetype;
 
 mod archetype_builder;
 
-mod archetype_data_layout;
 mod archetype_data_page;
 mod archetype_data_page_view;
 mod archetypes_container;

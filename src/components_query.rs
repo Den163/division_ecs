@@ -51,7 +51,6 @@ impl Store {
     ) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
-        let layouts = arch_container.get_layouts();
         let pages = arch_container.get_pages();
 
         query.page_views.clear();
@@ -62,10 +61,7 @@ impl Store {
                 continue;
             }
 
-            unsafe {
-                let offsets = layouts[arch_idx].component_offsets();
-                query.components_offsets.push(T::get_offsets(arch, offsets));
-            }
+            query.components_offsets.push(T::get_offsets(arch));
             
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);

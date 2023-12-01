@@ -4,14 +4,19 @@ use std::{
     ptr::null_mut,
 };
 
-use crate::{component_type::ComponentType, mem_utils, tuple::ComponentsTuple};
+use crate::{
+    archetype_data_page::ArchetypeDataPage, component_type::ComponentType, mem_utils,
+    tuple::ComponentsTuple,
+};
 
 #[derive(Debug)]
 pub struct Archetype {
     ids: *mut TypeId,
     sizes: *mut usize,
     aligns: *mut usize,
+    offsets: *mut usize,
     component_count: usize,
+    entities_capacity: usize,
 }
 
 pub trait ComponentTupleToArchetype: ComponentsTuple {
@@ -43,12 +48,71 @@ impl Archetype {
             };
         }
 
+        let entities_capacity =
+            unsafe { Self::calculate_entities_capacity(sizes, aligns, component_count) };
+        let offsets = unsafe {
+            Self::calculate_offsets(sizes, aligns, component_count, entities_capacity)
+        };
+
         Archetype {
             ids,
             sizes,
             aligns,
+            offsets,
             component_count,
+            entities_capacity,
         }
+    }
+
+    unsafe fn calculate_entities_capacity(
+        sizes: *const usize,
+        aligns: *const usize,
+        component_count: usize,
+    ) -> usize {
+        let ptr_size = std::mem::size_of::<usize>();
+
+        let aligns = std::slice::from_raw_parts(aligns, component_count);
+        let max_align = aligns.into_iter().max().unwrap();
+        let max_align = max_align % ptr_size;
+
+        let bytes_per_components_row_approx =
+            ArchetypeDataPage::PAGE_SIZE_BYTES / component_count - max_align;
+
+        let sizes = std::slice::from_raw_parts(sizes, component_count);
+        let entities_capacity = sizes
+            .iter()
+            .map(|s| bytes_per_components_row_approx / *s)
+            .min()
+            .unwrap();
+
+        entities_capacity
+    }
+
+    unsafe fn calculate_offsets(
+        sizes: *const usize,
+        aligns: *const usize,
+        component_count: usize,
+        entities_capacity: usize,
+    ) -> *mut usize {
+        let component_offsets: *mut usize = mem_utils::alloc(component_count);
+        let mut offset = 0;
+
+        for i in 0..component_count {
+            let size = *sizes.add(i);
+            let align = *aligns.add(i);
+            let align_offset = offset % align;
+
+            if align_offset != 0 {
+                offset += align - align_offset;
+            }
+
+            *component_offsets.add(i) = offset;
+
+            offset += size * entities_capacity;
+        }
+
+        assert!(offset <= ArchetypeDataPage::PAGE_SIZE_BYTES);
+        component_offsets
     }
 
     pub(crate) fn empty() -> Archetype {
@@ -56,6 +120,8 @@ impl Archetype {
             ids: null_mut(),
             sizes: null_mut(),
             aligns: null_mut(),
+            offsets: null_mut(),
+            entities_capacity: 0,
             component_count: 0,
         }
     }
@@ -102,6 +168,11 @@ impl Archetype {
     }
 
     #[inline(always)]
+    pub fn entities_capacity(&self) -> usize {
+        self.entities_capacity
+    }
+
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.component_count == 0
     }
@@ -109,6 +180,11 @@ impl Archetype {
     #[inline]
     pub(crate) unsafe fn component_sizes(&self) -> *const usize {
         self.sizes
+    }
+
+    #[inline]
+    pub(crate) unsafe fn component_offsets(&self) -> *const usize {
+        self.offsets
     }
 
     pub fn is_same_as(&self, other: &Self) -> bool {
@@ -184,8 +260,9 @@ impl Archetype {
 impl Clone for Archetype {
     fn clone(&self) -> Self {
         let component_count = self.component_count;
-        let (ids, sizes, aligns) = unsafe {
+        let (ids, sizes, aligns, offsets) = unsafe {
             (
+                mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
@@ -196,13 +273,16 @@ impl Clone for Archetype {
             self.ids.copy_to_nonoverlapping(ids, component_count);
             self.sizes.copy_to_nonoverlapping(sizes, component_count);
             self.aligns.copy_to_nonoverlapping(aligns, component_count);
+            self.offsets.copy_to_nonoverlapping(offsets, component_count);
         }
 
         Self {
             ids,
             sizes,
             aligns,
+            offsets,
             component_count,
+            entities_capacity: self.entities_capacity,
         }
     }
 }
@@ -223,6 +303,7 @@ impl Drop for Archetype {
             mem_utils::dealloc(self.ids, self.component_count);
             mem_utils::dealloc(self.sizes, self.component_count);
             mem_utils::dealloc(self.aligns, self.component_count);
+            mem_utils::dealloc(self.offsets, self.component_count);
         }
     }
 }

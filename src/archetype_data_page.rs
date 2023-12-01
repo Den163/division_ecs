@@ -1,4 +1,4 @@
-use crate::{archetype_data_layout::ArchetypeDataLayout, mem_utils, Archetype};
+use crate::{mem_utils, Archetype};
 
 /// Reusable page of the components data with a fixed size (4096 Bytes), related to the concrete archetype.
 /// It contains data for all components of the some entities subset
@@ -24,8 +24,8 @@ impl ArchetypeDataPage {
         }
     }
 
-    pub(crate) fn set_layout(&mut self, layout: &ArchetypeDataLayout) {
-        let capacity = layout.entities_capacity();
+    pub(crate) fn set_archetype(&mut self, archetype: &Archetype) {
+        let capacity = archetype.entities_capacity();
         self.entities_ids.reserve(capacity);
     }
 
@@ -59,13 +59,12 @@ impl ArchetypeDataPage {
         &mut self,
         index: usize,
         archetype: &Archetype,
-        layout: &ArchetypeDataLayout,
     ) -> Option<SwapRemoveInfo> {
         self.entities_ids.swap_remove(index);
         let last_swapped_index = self.entities_ids.len();
         if index < last_swapped_index {
             unsafe {
-                self.move_component_data(last_swapped_index, index, archetype, layout);
+                self.move_component_data(last_swapped_index, index, archetype);
             }
             
             Some(SwapRemoveInfo {
@@ -82,10 +81,9 @@ impl ArchetypeDataPage {
         src_entity_index: usize,
         dst_entity_index: usize,
         archetype: &Archetype,
-        layout: &ArchetypeDataLayout,
     ) {
         let sizes = archetype.component_sizes();
-        let offsets = layout.component_offsets();
+        let offsets = archetype.component_offsets();
 
         for i in 0..archetype.component_count() {
             let s = *sizes.add(i);

@@ -3,13 +3,19 @@ mod tests {
     use crate::{Archetype, Component, ArchetypeBuilder};
 
     #[derive(Component, Clone, Copy)]
-    struct TestType1;
+    struct TestType1 {
+        _v: f32
+    }
 
     #[derive(Component, Clone, Copy)]
-    struct TestType2;
+    struct TestType2 {
+        _v: f32
+    }
 
     #[derive(Component, Clone, Copy)]
-    struct TestType3;
+    struct TestType3 {
+        _v: f32
+    }
 
     #[test]
     fn archetype_has_component_when_it_build_with_it() {
