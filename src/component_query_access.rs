@@ -1,6 +1,6 @@
 use crate::{archetype_data_page::ArchetypeDataPage, tuple::ComponentsTuple, Archetype};
 
-pub trait ComponentsQueryAccess {
+pub trait ComponentQueryAccess {
     type OffsetsTuple;
     type AccessOutput<'a>;
 
@@ -15,7 +15,7 @@ pub trait ComponentsQueryAccess {
     fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple;
 }
 
-impl<TRead, TWrite> ComponentsQueryAccess for (TRead, TWrite)
+impl<TRead, TWrite> ComponentQueryAccess for (TRead, TWrite)
 where
     TRead: ComponentsTuple,
     TWrite: ComponentsTuple,
@@ -47,7 +47,7 @@ where
     }
 }
 
-impl<TRead> ComponentsQueryAccess for (TRead, ())
+impl<TRead> ComponentQueryAccess for (TRead, ())
 where
     TRead: ComponentsTuple,
 {
@@ -71,7 +71,7 @@ where
     }
 }
 
-impl<TWrite> ComponentsQueryAccess for ((), TWrite)
+impl<TWrite> ComponentQueryAccess for ((), TWrite)
 where
     TWrite: ComponentsTuple,
 {

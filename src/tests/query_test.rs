@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
     use crate::{
-        components_query::ComponentsReadOnlyQuery, Component,
+        component_query::ComponentsReadOnlyQuery, Component,
         ComponentsWriteQuery, Store, Archetype,
     };
 

@@ -8,8 +8,8 @@ mod archetypes_container;
 mod bitvec_utils;
 mod component;
 mod component_type;
-mod components_query;
-mod components_query_access;
+mod component_query;
+mod component_query_access;
 mod entities_container;
 mod entity;
 mod entity_in_archetype;
@@ -28,7 +28,7 @@ pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;
 pub use component::Component;
 pub use component_type::ComponentType;
-pub use components_query::{
+pub use component_query::{
     ComponentsQuery, ComponentsReadOnlyQuery, ComponentsReadWriteQuery,
     ComponentsWriteQuery,
 };

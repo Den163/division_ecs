@@ -1,11 +1,11 @@
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    components_query_access::ComponentsQueryAccess, Entity, Store,
+    component_query_access::ComponentQueryAccess, Entity, Store,
 };
 
 pub struct ComponentsQuery<T>
 where
-    T: ComponentsQueryAccess,
+    T: ComponentQueryAccess,
 {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
@@ -17,7 +17,7 @@ pub type ComponentsWriteQuery<TWrite> = ComponentsQuery<((), TWrite)>;
 
 pub struct ComponentsQueryIter<'a, T>
 where
-    T: ComponentsQueryAccess,
+    T: ComponentQueryAccess,
 {
     page_views: &'a [PageIterView],
     components_offsets: &'a [T::OffsetsTuple],
@@ -34,7 +34,7 @@ struct PageIterView {
 
 impl<T> ComponentsQuery<T>
 where
-    T: ComponentsQueryAccess,
+    T: ComponentQueryAccess,
 {
     pub fn new() -> Self {
         ComponentsQuery {
@@ -45,7 +45,7 @@ where
 }
 
 impl Store {
-    pub fn query_iter<'a, 'b: 'a, T: ComponentsQueryAccess>(
+    pub fn query_iter<'a, 'b: 'a, T: ComponentQueryAccess>(
         &'a self,
         query: &'b mut ComponentsQuery<T>,
     ) -> ComponentsQueryIter<'a, T> {
@@ -91,7 +91,7 @@ impl Store {
 
 impl<'a, T> Iterator for ComponentsQueryIter<'a, T>
 where
-    T: ComponentsQueryAccess,
+    T: ComponentQueryAccess,
 {
     type Item = (Entity, T::AccessOutput<'a>);
 
@@ -103,7 +103,9 @@ where
             return None;
         }
 
-        let mut curr_page_view = &page_views[self.current_page_view_index];
+        let mut curr_page_view = unsafe {
+            page_views.get_unchecked(self.current_page_view_index)
+        };
         let mut curr_page = unsafe { &*curr_page_view.page };
         let mut entities_ids = curr_page.entities_ids();
 

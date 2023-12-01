@@ -34,7 +34,7 @@ macro_rules! components_tuple_impl {
             type RefsTuple<'a> = ($(&'a $T,)*);
             type MutRefsTuple<'a> = ($(&'a mut $T,)*);
 
-            #[inline]
+            #[inline(always)]
             fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
                 unsafe {(
                     $(
@@ -48,7 +48,7 @@ macro_rules! components_tuple_impl {
                 )}
             }
 
-            #[inline]
+            #[inline(always)]
             fn get_offsets_checked(archetype: &Archetype) -> Self::OffsetsTuple {
                 unsafe {(
                     $(
@@ -59,7 +59,7 @@ macro_rules! components_tuple_impl {
                 )}
             }
 
-            #[inline]
+            #[inline(always)]
             fn is_archetype_include_types(archetype: &Archetype) -> bool {
                 archetype.is_include_ids(&type_ids!($($T),*))
             }
