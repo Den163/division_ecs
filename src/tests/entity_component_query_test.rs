@@ -53,6 +53,15 @@ mod test {
             );
         }
 
+        for i in 0..entities.len() - 1 {
+            if i % 3 == 0 {
+                let x = i;
+                let y = i * 17 % entities.len();
+                entities.swap(x, y);
+                component_values.swap(x, y);
+            }
+        }
+
         let mut query =
             EntityComponentReadOnlyQuery::<TestComponent2>::with_entities(&entities);
 

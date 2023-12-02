@@ -17,6 +17,7 @@ pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
     entities: Vec<Entity>,
+    
     entities_chunks: Vec<Range<usize>>,
     chunk_component_offsets: Vec<T::OffsetsTuple>,
     chunk_pages: Vec<*const ArchetypeDataPage>,
@@ -72,6 +73,7 @@ impl Store {
     ) -> EntityComponentQueryIter<'a, T> {
         query.entities_chunks.clear();
         query.chunk_pages.clear();
+        query.chunk_component_offsets.clear();
 
         let entity_in_archetypes = self.entity_in_archetypes();
 
@@ -111,7 +113,7 @@ impl Store {
                 .chunk_pages
                 .push(chunk_page as *const ArchetypeDataPage);
 
-            i += j;
+            i = j;
         }
 
         EntityComponentQueryIter {
