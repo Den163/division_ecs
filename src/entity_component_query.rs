@@ -1,13 +1,13 @@
 use std::ops::Range;
 
 use crate::{
-    component_query_access::ComponentQueryAccess,
+    component_query_access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
     entity_in_archetype::EntityInArchetype, Entity, Store, archetype_data_page::ArchetypeDataPage,
 };
 
-pub type EntityComponentReadWriteQuery<TRead, TWrite> = EntityComponentQuery<(TRead, TWrite)>;
-pub type EntityComponentReadOnlyQuery<TRead> = EntityComponentQuery<(TRead, ())>;
-pub type EntityComponentWriteQuery<TWrite> = EntityComponentQuery<((), TWrite)>;
+pub type EntityComponentReadWriteQuery<R, W> = EntityComponentQuery<ReadWriteAccess<R, W>>;
+pub type EntityComponentReadOnlyQuery<R> = EntityComponentQuery<ReadonlyAccess<R>>;
+pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
     entities: Vec<Entity>,

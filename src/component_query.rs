@@ -1,11 +1,14 @@
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    component_query_access::ComponentQueryAccess, Entity, Store,
+    component_query_access::{
+        ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess,
+    },
+    Entity, Store,
 };
 
-pub type ComponentReadWriteQuery<TRead, TWrite> = ComponentQuery<(TRead, TWrite)>;
-pub type ComponentReadOnlyQuery<TRead> = ComponentQuery<(TRead, ())>;
-pub type ComponentWriteQuery<TWrite> = ComponentQuery<((), TWrite)>;
+pub type ComponentReadWriteQuery<R, W> = ComponentQuery<ReadWriteAccess<R, W>>;
+pub type ComponentReadOnlyQuery<R> = ComponentQuery<ReadonlyAccess<R>>;
+pub type ComponentWriteQuery<W> = ComponentQuery<WriteAccess<W>>;
 
 pub struct ComponentQuery<T: ComponentQueryAccess> {
     page_views: Vec<PageIterView>,
@@ -26,8 +29,7 @@ pub(crate) struct PageIterView {
     components_offsets_index: usize,
 }
 
-impl<T: ComponentQueryAccess> ComponentQuery<T>
-{
+impl<T: ComponentQueryAccess> ComponentQuery<T> {
     pub fn new() -> Self {
         ComponentQuery {
             page_views: Vec::new(),
@@ -54,7 +56,7 @@ impl Store {
             }
 
             query.components_offsets.push(T::get_offsets(arch));
-            
+
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
 
@@ -81,8 +83,7 @@ impl Store {
     }
 }
 
-impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T>
-{
+impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
     type Item = (Entity, T::AccessOutput<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -93,9 +94,8 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T>
             return None;
         }
 
-        let mut curr_page_view = unsafe {
-            page_views.get_unchecked(self.current_page_view_index)
-        };
+        let mut curr_page_view =
+            unsafe { page_views.get_unchecked(self.current_page_view_index) };
         let mut curr_page = unsafe { &*curr_page_view.page };
         let mut entities_ids = curr_page.entities_ids();
 

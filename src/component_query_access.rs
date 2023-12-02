@@ -1,4 +1,19 @@
+use std::marker::PhantomData;
+
 use crate::{archetype_data_page::ArchetypeDataPage, tuple::ComponentsTuple, Archetype};
+
+pub struct ReadonlyAccess<TRead: ComponentsTuple> {
+    _read: PhantomData<TRead>,
+}
+
+pub struct WriteAccess<TWrite: ComponentsTuple> {
+    _write: PhantomData<TWrite>,
+}
+
+pub struct ReadWriteAccess<TRead: ComponentsTuple, TWrite: ComponentsTuple> {
+    _read: PhantomData<TRead>,
+    _write: PhantomData<TWrite>,
+}
 
 pub trait ComponentQueryAccess {
     type OffsetsTuple;
@@ -15,7 +30,7 @@ pub trait ComponentQueryAccess {
     fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple;
 }
 
-impl<TRead, TWrite> ComponentQueryAccess for (TRead, TWrite)
+impl<TRead, TWrite> ComponentQueryAccess for ReadWriteAccess<TRead, TWrite>
 where
     TRead: ComponentsTuple,
     TWrite: ComponentsTuple,
@@ -47,10 +62,7 @@ where
     }
 }
 
-impl<TRead> ComponentQueryAccess for (TRead, ())
-where
-    TRead: ComponentsTuple,
-{
+impl<TRead: ComponentsTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
     type OffsetsTuple = TRead::OffsetsTuple;
     type AccessOutput<'a> = TRead::RefsTuple<'a>;
 
@@ -71,10 +83,7 @@ where
     }
 }
 
-impl<TWrite> ComponentQueryAccess for ((), TWrite)
-where
-    TWrite: ComponentsTuple,
-{
+impl<TWrite: ComponentsTuple> ComponentQueryAccess for WriteAccess<TWrite> {
     type OffsetsTuple = TWrite::OffsetsTuple;
     type AccessOutput<'a> = TWrite::MutRefsTuple<'a>;
 
