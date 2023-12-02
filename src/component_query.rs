@@ -3,22 +3,16 @@ use crate::{
     component_query_access::ComponentQueryAccess, Entity, Store,
 };
 
-pub struct ComponentsQuery<T>
-where
-    T: ComponentQueryAccess,
-{
+pub type ComponentReadWriteQuery<TRead, TWrite> = ComponentQuery<(TRead, TWrite)>;
+pub type ComponentReadOnlyQuery<TRead> = ComponentQuery<(TRead, ())>;
+pub type ComponentWriteQuery<TWrite> = ComponentQuery<((), TWrite)>;
+
+pub struct ComponentQuery<T: ComponentQueryAccess> {
     page_views: Vec<PageIterView>,
     components_offsets: Vec<T::OffsetsTuple>,
 }
 
-pub type ComponentsReadWriteQuery<TRead, TWrite> = ComponentsQuery<(TRead, TWrite)>;
-pub type ComponentsReadOnlyQuery<TRead> = ComponentsQuery<(TRead, ())>;
-pub type ComponentsWriteQuery<TWrite> = ComponentsQuery<((), TWrite)>;
-
-pub struct ComponentsQueryIter<'a, T>
-where
-    T: ComponentQueryAccess,
-{
+pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
     page_views: &'a [PageIterView],
     components_offsets: &'a [T::OffsetsTuple],
     entities_versions: &'a [u32],
@@ -27,17 +21,15 @@ where
     current_entity_index: usize,
 }
 
-struct PageIterView {
+pub(crate) struct PageIterView {
     page: *const ArchetypeDataPage,
     components_offsets_index: usize,
 }
 
-impl<T> ComponentsQuery<T>
-where
-    T: ComponentQueryAccess,
+impl<T: ComponentQueryAccess> ComponentQuery<T>
 {
     pub fn new() -> Self {
-        ComponentsQuery {
+        ComponentQuery {
             page_views: Vec::new(),
             components_offsets: Vec::new(),
         }
@@ -45,9 +37,9 @@ where
 }
 
 impl Store {
-    pub fn query_iter<'a, 'b: 'a, T: ComponentQueryAccess>(
+    pub fn component_query_iter<'a, 'b: 'a, T: ComponentQueryAccess>(
         &'a self,
-        query: &'b mut ComponentsQuery<T>,
+        query: &'b mut ComponentQuery<T>,
     ) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
@@ -84,14 +76,12 @@ impl Store {
             current_entity_index: 0,
             components_offsets: &query.components_offsets,
             page_views: &query.page_views,
-            entities_versions: self.entities_container.get_entity_versions(),
+            entities_versions: self.entities_container.entity_versions(),
         }
     }
 }
 
-impl<'a, T> Iterator for ComponentsQueryIter<'a, T>
-where
-    T: ComponentQueryAccess,
+impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T>
 {
     type Item = (Entity, T::AccessOutput<'a>);
 

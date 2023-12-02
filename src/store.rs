@@ -112,6 +112,10 @@ impl Store {
         };
     }
 
+    pub(crate) fn entity_in_archetypes(&self) -> *const EntityInArchetype {
+        self.entity_in_archetypes
+    }
+
     #[inline(always)]
     fn get_entity_in_archetype_ref(&self, id: u32) -> &EntityInArchetype {
         self.entities_container.debug_validate_id_with_panic(id);

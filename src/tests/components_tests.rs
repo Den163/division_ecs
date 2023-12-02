@@ -1,13 +1,11 @@
-use crate::Component;
-
-impl Component for f32 {}
-impl Component for u64 {}
-impl Component for u128 {}
-
 #[cfg(test)]
 mod tests {
     use crate::{Archetype, Store, Component};
     use std::mem::MaybeUninit;
+
+    impl Component for f32 {}
+    impl Component for u64 {}
+    impl Component for u128 {}
 
     #[derive(Component, Clone, Copy)]
     struct TestComponent1 {
