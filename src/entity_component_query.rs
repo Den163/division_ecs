@@ -1,11 +1,17 @@
 use std::ops::Range;
 
 use crate::{
-    component_query_access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
-    entity_in_archetype::EntityInArchetype, Entity, Store, archetype_data_page::ArchetypeDataPage,
+    archetype_data_page::ArchetypeDataPage,
+    component_query_access::{
+        ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess,
+    },
+    entity_in_archetype::EntityInArchetype,
+    tuple::ComponentsTuple,
+    Entity, Store,
 };
 
-pub type EntityComponentReadWriteQuery<R, W> = EntityComponentQuery<ReadWriteAccess<R, W>>;
+pub type EntityComponentReadWriteQuery<R, W> =
+    EntityComponentQuery<ReadWriteAccess<R, W>>;
 pub type EntityComponentReadOnlyQuery<R> = EntityComponentQuery<ReadonlyAccess<R>>;
 pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
@@ -43,6 +49,22 @@ impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
     }
 }
 
+pub fn readonly<R: ComponentsTuple>(
+    entities: &[Entity],
+) -> EntityComponentReadOnlyQuery<R> {
+    EntityComponentQuery::with_entities(entities)
+}
+
+pub fn write<W: ComponentsTuple>(entities: &[Entity]) -> EntityComponentWriteQuery<W> {
+    EntityComponentQuery::with_entities(entities)
+}
+
+pub fn read_write<R: ComponentsTuple, W: ComponentsTuple>(
+    entities: &[Entity],
+) -> EntityComponentReadWriteQuery<R, W> {
+    EntityComponentQuery::with_entities(entities)
+}
+
 impl Store {
     pub fn entity_component_query_iter<'a, 'b: 'a, T: ComponentQueryAccess>(
         &'a self,
@@ -59,33 +81,37 @@ impl Store {
             let chunk_page_location =
                 unsafe { *entity_in_archetypes.add(chunk_entity.id as usize) };
             let chunk_page_index = chunk_page_location.page_index as usize;
-            let chunk_arch_index = self.archetypes_container.get_archetype_index_by_page(
-                chunk_page_index);
-            let chunk_arch = &self.archetypes_container.get_archetypes()[chunk_arch_index];
+            let chunk_arch_index = self
+                .archetypes_container
+                .get_archetype_index_by_page(chunk_page_index);
+            let chunk_arch =
+                &self.archetypes_container.get_archetypes()[chunk_arch_index];
             let chunk_page = unsafe {
-                self.archetypes_container.get_pages().get_unchecked(chunk_page_index) 
+                self.archetypes_container
+                    .get_pages()
+                    .get_unchecked(chunk_page_index)
             };
             let chunk_comp_offsets = T::get_offsets(&chunk_arch);
 
             let mut j = i + 1;
             while j < query.entities.len() {
                 let e = query.entities[j];
-                let page_location = unsafe { 
-                    *entity_in_archetypes.add(e.id as usize) 
-                };
+                let page_location = unsafe { *entity_in_archetypes.add(e.id as usize) };
 
                 if page_location.page_index != chunk_page_location.page_index {
                     break;
                 }
 
-                j+= 1;
+                j += 1;
             }
 
             query.entities_chunks.push(i..j);
             query.chunk_component_offsets.push(chunk_comp_offsets);
-            query.chunk_pages.push(chunk_page as *const ArchetypeDataPage);
+            query
+                .chunk_pages
+                .push(chunk_page as *const ArchetypeDataPage);
 
-            i+= j;
+            i += j;
         }
 
         EntityComponentQueryIter {
@@ -108,9 +134,8 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
             return None;
         }
 
-        let current_chunk = unsafe {
-            self.entities_chunks.get_unchecked(self.current_chunk_index)
-        };
+        let current_chunk =
+            unsafe { self.entities_chunks.get_unchecked(self.current_chunk_index) };
         let current_entity_index = current_chunk.start + self.current_offset_from_chunk;
 
         let (current_entity, entity_in_archetype, page, offsets) = unsafe {
@@ -122,7 +147,8 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
                 current_entity,
                 entity_in_archetype,
                 &*page,
-                self.chunk_components_offsets.get_unchecked(self.current_chunk_index),
+                self.chunk_components_offsets
+                    .get_unchecked(self.current_chunk_index),
             )
         };
 

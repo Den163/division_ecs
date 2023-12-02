@@ -1,3 +1,6 @@
+pub mod component_query;
+pub mod entity_component_query;
+
 mod archetype;
 
 mod archetype_builder;
@@ -7,12 +10,10 @@ mod archetype_data_page_view;
 mod archetypes_container;
 mod bitvec_utils;
 mod component;
-mod component_query;
 mod component_query_access;
 mod component_type;
 mod entities_container;
 mod entity;
-mod entity_component_query;
 mod entity_in_archetype;
 mod mem_utils;
 mod resource_store;
@@ -31,6 +32,7 @@ pub use component::Component;
 pub use component_query::{
     ComponentQuery, ComponentReadOnlyQuery, ComponentReadWriteQuery, ComponentWriteQuery,
 };
+pub use component_query_access::{ReadWriteAccess, ReadonlyAccess, WriteAccess};
 pub use component_type::ComponentType;
 pub use entity_component_query::{
     EntityComponentQuery, EntityComponentQueryIter, EntityComponentReadOnlyQuery,

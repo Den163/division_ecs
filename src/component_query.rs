@@ -3,7 +3,7 @@ use crate::{
     component_query_access::{
         ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess,
     },
-    Entity, Store,
+    Entity, Store, tuple::ComponentsTuple,
 };
 
 pub type ComponentReadWriteQuery<R, W> = ComponentQuery<ReadWriteAccess<R, W>>;
@@ -27,6 +27,18 @@ pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
 pub(crate) struct PageIterView {
     page: *const ArchetypeDataPage,
     components_offsets_index: usize,
+}
+
+pub fn readonly<R: ComponentsTuple>() -> ComponentQuery<ReadonlyAccess<R>> {
+    ComponentReadOnlyQuery::new()
+}
+
+pub fn write<W: ComponentsTuple>() -> ComponentQuery<WriteAccess<W>> {
+    ComponentWriteQuery::new()
+}
+
+pub fn read_write<R: ComponentsTuple, W: ComponentsTuple>() -> ComponentQuery<ReadWriteAccess<R, W>> {
+    ComponentReadWriteQuery::new()
 }
 
 impl<T: ComponentQueryAccess> ComponentQuery<T> {

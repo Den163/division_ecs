@@ -1,4 +1,6 @@
-use division_ecs::{ArchetypeBuilder, Component, ComponentReadOnlyQuery, Store};
+use division_ecs::{
+    component_query, ArchetypeBuilder, Component, ComponentReadOnlyQuery, Store,
+};
 
 struct AosObject {
     position: Position,
@@ -47,7 +49,7 @@ pub fn main() {
     let aos_result = iterate_oop(&aos_data);
     println!("Array of structs result: {aos_result}");
 
-    let mut query = create_query();
+    let mut query = component_query::readonly();
 
     warmup_ecs(&registry, &mut query);
 
@@ -86,11 +88,6 @@ fn create_data_arrays() -> Vec<Box<AosObject>> {
     }
 
     data
-}
-
-#[inline(never)]
-fn create_query() -> ComponentReadOnlyQuery<(Position, Rotation, MovingUnit)> {
-    ComponentReadOnlyQuery::<(Position, Rotation, MovingUnit)>::new()
 }
 
 #[inline(never)]
