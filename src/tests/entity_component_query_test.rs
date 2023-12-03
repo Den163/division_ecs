@@ -66,7 +66,7 @@ mod test {
             EntityComponentReadOnlyQuery::<TestComponent2>::with_entities(&entities);
 
         let mut i = 0;
-        for (e, (c,)) in store.entity_component_query_iter(&mut query) {
+        for (e, c) in store.entity_component_query_iter(&mut query) {
             assert_eq!(e, entities[i]);
             assert_eq!(c.value, component_values[i].value);
 
@@ -83,7 +83,7 @@ mod test {
         component_values: &mut Vec<TestComponent2>,
     ) {
         let e = store.create_entity_with_archetype(&archetype);
-        let (comp,) = store.get_components_refs_mut::<TestComponent2>(e);
+        let comp = store.get_components_refs_mut::<TestComponent2>(e);
 
         *comp = TestComponent2 { value: e.id as f64 };
 

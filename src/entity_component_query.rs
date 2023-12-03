@@ -18,9 +18,9 @@ pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
     entities: Vec<Entity>,
     
-    entities_chunks: Vec<Range<usize>>,
-    chunk_component_offsets: Vec<T::OffsetsTuple>,
-    chunk_pages: Vec<*const ArchetypeDataPage>,
+    entity_index_ranges: Vec<Range<usize>>,
+    range_to_component_offsets: Vec<T::OffsetsTuple>,
+    range_to_pages: Vec<*const ArchetypeDataPage>,
 }
 
 pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
@@ -38,9 +38,9 @@ impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
     pub fn with_entities(entities: &[Entity]) -> Self {
         EntityComponentQuery {
             entities: Vec::from(entities),
-            chunk_component_offsets: Vec::new(),
-            entities_chunks: Vec::new(),
-            chunk_pages: Vec::new(),
+            entity_index_ranges: Vec::new(),
+            range_to_component_offsets: Vec::new(),
+            range_to_pages: Vec::new(),
         }
     }
 
@@ -71,9 +71,9 @@ impl Store {
         &'a self,
         query: &'b mut EntityComponentQuery<T>,
     ) -> EntityComponentQueryIter<'a, T> {
-        query.entities_chunks.clear();
-        query.chunk_pages.clear();
-        query.chunk_component_offsets.clear();
+        query.entity_index_ranges.clear();
+        query.range_to_pages.clear();
+        query.range_to_component_offsets.clear();
 
         let entity_in_archetypes = self.entity_in_archetypes();
 
@@ -107,10 +107,10 @@ impl Store {
                 j += 1;
             }
 
-            query.entities_chunks.push(i..j);
-            query.chunk_component_offsets.push(chunk_comp_offsets);
+            query.entity_index_ranges.push(i..j);
+            query.range_to_component_offsets.push(chunk_comp_offsets);
             query
-                .chunk_pages
+                .range_to_pages
                 .push(chunk_page as *const ArchetypeDataPage);
 
             i = j;
@@ -118,9 +118,9 @@ impl Store {
 
         EntityComponentQueryIter {
             entities: &query.entities,
-            entities_chunks: &query.entities_chunks,
-            chunk_pages: &query.chunk_pages,
-            chunk_components_offsets: &query.chunk_component_offsets,
+            entities_chunks: &query.entity_index_ranges,
+            chunk_pages: &query.range_to_pages,
+            chunk_components_offsets: &query.range_to_component_offsets,
             entity_in_archetypes: self.entity_in_archetypes(),
             current_chunk_index: 0,
             current_offset_from_chunk: 0,

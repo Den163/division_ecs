@@ -31,8 +31,8 @@ macro_rules! components_tuple_impl {
         #[allow(unused_parens)]
         impl<$($T: 'static + Component),*> ComponentsTuple for ($($T),*) {
             type OffsetsTuple = ($(components_tuple_impl!(@type_to_usize, $T)),*);
-            type RefsTuple<'a> = ($(&'a $T,)*);
-            type MutRefsTuple<'a> = ($(&'a mut $T,)*);
+            type RefsTuple<'a> = ($(&'a $T),*);
+            type MutRefsTuple<'a> = ($(&'a mut $T),*);
 
             #[inline(always)]
             fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
@@ -77,8 +77,8 @@ macro_rules! components_tuple_impl {
                                 entity_index, *paste!{ [<$T:lower>] } ,
                                 std::mem::size_of::<$T>()
                             ) as *const $T
-                        ),
-                    )*
+                        )
+                    ),*
                 )}
             }
 
@@ -95,8 +95,8 @@ macro_rules! components_tuple_impl {
                                 entity_index, *paste!{ [<$T:lower>] } ,
                                 std::mem::size_of::<$T>()
                             ) as *mut $T
-                        ),
-                    )*
+                        )
+                    ),*
                 )}
             }
         }

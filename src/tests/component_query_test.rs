@@ -82,7 +82,7 @@ mod test {
 
         for i in 0..INIT_ENTITIES_COUNT {
             let e = store.create_entity_with_archetype(&arch);
-            let (v,) = store.get_components_refs_mut::<usize>(e);
+            let v = store.get_components_refs_mut::<usize>(e);
             (*v) = i;
 
             if entities_to_destroy.contains(&i) {
@@ -93,7 +93,7 @@ mod test {
         }
 
         let mut iterated_entities = Vec::new();
-        for (e, (v,)) in store.component_query_iter(&mut ComponentReadOnlyQuery::<usize>::new()) {
+        for (e, v) in store.component_query_iter(&mut ComponentReadOnlyQuery::<usize>::new()) {
             iterated_entities.push(e);
 
             assert!(entities_to_destroy.contains(v) == false);
