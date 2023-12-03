@@ -92,10 +92,10 @@ impl Store {
             let mut range_end = range_start + 1;
             while range_end < entities.len() {
                 let inner_entity = entities[range_end];
+
                 let page_index =
                     unsafe { self.get_page_index_unchecked(inner_entity.id) as usize };
-                    
-                if self.is_alive(inner_entity) | (range_page_index != page_index) {
+                if !self.is_alive(inner_entity) | (range_page_index != page_index) {
                     break;
                 }
 
