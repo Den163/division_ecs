@@ -2,7 +2,7 @@ use std::ptr::null;
 
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    component_query_access::{
+    query::access::{
         ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess,
     },
     tuple::ComponentsTuple,
@@ -101,7 +101,7 @@ impl Store {
             components_offsets: &query.components_offsets,
             page_views: &query.page_views,
             store: self,
-            curr_page_ptr: null()
+            curr_page_ptr: null(),
         }
     }
 }

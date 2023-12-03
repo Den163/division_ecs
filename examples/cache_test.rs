@@ -1,5 +1,5 @@
 use division_ecs::{
-    component_query, ArchetypeBuilder, Component, ComponentReadOnlyQuery, Store,
+    query::component, ArchetypeBuilder, Component, ComponentReadOnlyQuery, Store,
 };
 
 struct AosObject {
@@ -49,7 +49,7 @@ pub fn main() {
     let aos_result = iterate_oop(&aos_data);
     println!("Array of structs result: {aos_result}");
 
-    let mut query = component_query::readonly();
+    let mut query = component::readonly();
 
     warmup_ecs(&registry, &mut query);
 

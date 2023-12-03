@@ -2,10 +2,10 @@ use std::ops::Range;
 
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    component_query_access::{
+    entity_in_archetype::EntityInArchetype,
+    query::access::{
         ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess,
     },
-    entity_in_archetype::EntityInArchetype,
     tuple::ComponentsTuple,
     Entity, Store,
 };
@@ -17,7 +17,7 @@ pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
     entities: Vec<Entity>,
-    
+
     entity_index_ranges: Vec<Range<usize>>,
     range_to_component_offsets: Vec<T::OffsetsTuple>,
     range_to_pages: Vec<*const ArchetypeDataPage>,
@@ -36,7 +36,7 @@ pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
 }
 
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
-    source_iter: EntityComponentQueryIter<'a, T>
+    source_iter: EntityComponentQueryIter<'a, T>,
 }
 
 impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
@@ -170,17 +170,17 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
             self.next_offset_from_chunk += 1;
         }
 
-        Some(
-            T::get_refs(page, entity_in_archetype.index_in_page as usize, &offsets),
-        )
+        Some(T::get_refs(
+            page,
+            entity_in_archetype.index_in_page as usize,
+            &offsets,
+        ))
     }
 }
 
 impl<'a, T: ComponentQueryAccess> EntityComponentQueryIter<'a, T> {
     pub fn with_entities(self) -> WithEntitiesIter<'a, T> {
-        WithEntitiesIter {
-            source_iter: self
-        }
+        WithEntitiesIter { source_iter: self }
     }
 }
 
@@ -189,7 +189,10 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.source_iter.next().map(|components| {
-            (self.source_iter.entities[self.source_iter.current_entity_index], components)
+            (
+                self.source_iter.entities[self.source_iter.current_entity_index],
+                components,
+            )
         })
     }
 }
