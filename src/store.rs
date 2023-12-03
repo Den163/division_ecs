@@ -88,6 +88,17 @@ impl Store {
         page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page as usize)
     }
 
+    #[inline(always)]
+    pub fn get_entity_archetype(&self, entity: Entity) -> &Archetype {
+        debug_assert!(self.is_alive(entity));
+
+        let entity_in_archetype =
+            unsafe { *self.entity_in_archetypes.add(entity.id as usize) };
+
+        let page_index = entity_in_archetype.page_index as usize;
+        self.archetypes_container.get_archetype_by_page(page_index)
+    }
+
     fn get_components_refs_info<'a>(
         &'a self,
         entity: Entity,

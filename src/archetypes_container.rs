@@ -144,6 +144,12 @@ impl ArchetypesContainer {
         self.page_to_archetype[page_index] as usize
     }
 
+    #[inline]
+    pub fn get_archetype_by_page(&self, page_index: usize) -> &Archetype {
+        let arch_index = self.page_to_archetype[page_index] as usize;
+        &self.archetypes[arch_index]
+    }
+
     fn free_page(&mut self, page_index: usize) {
         let archetype_index = self.page_to_archetype[page_index];
         if archetype_index < 0 {
