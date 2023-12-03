@@ -40,7 +40,11 @@ pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
 }
 
 impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
-    pub fn with_entities(entities: &[Entity]) -> Self {
+    pub fn new() -> Self {
+        Self::for_entities(&[])
+    }
+
+    pub fn for_entities(entities: &[Entity]) -> Self {
         EntityComponentQuery {
             entities: Vec::from(entities),
             entity_index_ranges: Vec::new(),
@@ -58,17 +62,17 @@ impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
 pub fn readonly<R: ComponentsTuple>(
     entities: &[Entity],
 ) -> EntityComponentReadOnlyQuery<R> {
-    EntityComponentQuery::with_entities(entities)
+    EntityComponentQuery::for_entities(entities)
 }
 
 pub fn write<W: ComponentsTuple>(entities: &[Entity]) -> EntityComponentWriteQuery<W> {
-    EntityComponentQuery::with_entities(entities)
+    EntityComponentQuery::for_entities(entities)
 }
 
 pub fn read_write<R: ComponentsTuple, W: ComponentsTuple>(
     entities: &[Entity],
 ) -> EntityComponentReadWriteQuery<R, W> {
-    EntityComponentQuery::with_entities(entities)
+    EntityComponentQuery::for_entities(entities)
 }
 
 impl Store {

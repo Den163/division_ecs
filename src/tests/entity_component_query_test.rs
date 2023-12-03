@@ -63,7 +63,7 @@ mod test {
         }
 
         let mut query =
-            EntityComponentReadOnlyQuery::<TestComponent2>::with_entities(&entities);
+            EntityComponentReadOnlyQuery::<TestComponent2>::for_entities(&entities);
 
         let mut i = 0;
         for (e, c) in store.entity_component_query_iter(&mut query).with_entities() {
