@@ -13,8 +13,7 @@ pub type EntityComponentReadOnlyQuery<R> = EntityComponentQuery<ReadonlyAccess<R
 pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
-    entities: Vec<Entity>,
-
+    filtered_entities: Vec<Entity>,
     entity_index_ranges: Vec<Range<usize>>,
     range_to_component_offsets: Vec<T::OffsetsTuple>,
     range_to_pages: Vec<*const ArchetypeDataPage>,
@@ -38,52 +37,55 @@ pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
 
 impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
     pub fn new() -> Self {
-        Self::for_entities(&[])
-    }
-
-    pub fn for_entities(entities: &[Entity]) -> Self {
-        EntityComponentQuery {
-            entities: Vec::from(entities),
+        Self {
+            filtered_entities: Vec::new(),
             entity_index_ranges: Vec::new(),
             range_to_component_offsets: Vec::new(),
             range_to_pages: Vec::new(),
         }
     }
-
-    pub fn set_entities(&mut self, entities: &[Entity]) {
-        self.entities.clear();
-        self.entities.extend_from_slice(entities);
-    }
 }
 
-pub fn readonly<R: ComponentsTuple>(
-    entities: &[Entity],
-) -> EntityComponentReadOnlyQuery<R> {
-    EntityComponentQuery::for_entities(entities)
+pub fn readonly<R: ComponentsTuple>() -> EntityComponentReadOnlyQuery<R> {
+    EntityComponentQuery::new()
 }
 
-pub fn write<W: ComponentsTuple>(entities: &[Entity]) -> EntityComponentWriteQuery<W> {
-    EntityComponentQuery::for_entities(entities)
+pub fn write<W: ComponentsTuple>() -> EntityComponentWriteQuery<W> {
+    EntityComponentQuery::new()
 }
 
 pub fn read_write<R: ComponentsTuple, W: ComponentsTuple>(
-    entities: &[Entity],
 ) -> EntityComponentReadWriteQuery<R, W> {
-    EntityComponentQuery::for_entities(entities)
+    EntityComponentQuery::new()
 }
 
 impl Store {
     pub fn entity_component_query_iter<'a, 'b: 'a, T: ComponentQueryAccess>(
         &'a self,
+        entities: &[Entity],
         query: &'b mut EntityComponentQuery<T>,
     ) -> EntityComponentQueryIter<'a, T> {
         query.entity_index_ranges.clear();
         query.range_to_pages.clear();
         query.range_to_component_offsets.clear();
+        query.filtered_entities.clear();
 
-        let mut i = 0;
-        while i < query.entities.len() {
-            let chunk_entity = query.entities[i];
+        query.filtered_entities.reserve(entities.len());
+        query.filtered_entities.extend(
+            entities
+                .iter()
+                .filter(|e| {
+                    if let Some(arch) = self.get_entity_archetype(**e)  {
+                        T::is_archetype_include_types(arch)
+                    } else {
+                        false
+                    }
+                } ),
+        );
+
+        let mut chunk_start = 0;
+        while chunk_start < query.filtered_entities.len() {
+            let chunk_entity = query.filtered_entities[chunk_start];
             let chunk_page_index =
                 unsafe { self.get_page_index_unchecked(chunk_entity.id) as usize };
             let chunk_arch_index = self
@@ -98,31 +100,29 @@ impl Store {
             };
             let chunk_comp_offsets = T::get_offsets(&chunk_arch);
 
-            let mut j = i + 1;
-            while j < query.entities.len() {
-                let e = query.entities[j];
-                let page_index = unsafe {
-                    self.get_page_index_unchecked(e.id) as usize
-                };
+            let mut chunk_end = chunk_start + 1;
+            while chunk_end < query.filtered_entities.len() {
+                let e = query.filtered_entities[chunk_end];
+                let page_index = unsafe { self.get_page_index_unchecked(e.id) as usize };
                 if page_index != chunk_page_index {
                     break;
                 }
 
-                j += 1;
+                chunk_end += 1;
             }
 
-            query.entity_index_ranges.push(i..j);
+            query.entity_index_ranges.push(chunk_start..chunk_end);
             query.range_to_component_offsets.push(chunk_comp_offsets);
             query
                 .range_to_pages
                 .push(chunk_page as *const ArchetypeDataPage);
 
-            i = j;
+            chunk_start = chunk_end;
         }
 
         EntityComponentQueryIter {
             store: &self,
-            entities: &query.entities,
+            entities: &query.filtered_entities,
             entities_chunks: &query.entity_index_ranges,
             chunk_pages: &query.range_to_pages,
             chunk_components_offsets: &query.range_to_component_offsets,
@@ -163,11 +163,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
             self.next_offset_from_chunk += 1;
         }
 
-        Some(T::get_refs(
-            page,
-            index_in_page as usize,
-            &offsets,
-        ))
+        Some(T::get_refs(page, index_in_page as usize, &offsets))
     }
 }
 

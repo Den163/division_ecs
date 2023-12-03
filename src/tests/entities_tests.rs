@@ -152,20 +152,21 @@ mod tests {
     }
 
     #[test]
-    fn get_entity_archetype_archetypes_are_same() {
+    fn get_entity_archetype_same_archetypes() {
         let arch = Archetype::with_components::<(u64, u32)>();
         let mut store = Store::new();
 
         let e0 = store.create_entity_with_archetype(&arch);
         let e1 = store.create_entity_with_archetype(&arch);
 
-        assert!(store
-            .get_entity_archetype(e0).unwrap()
-            .is_same_as(store.get_entity_archetype(e1).unwrap()),);
+        let arch0 = store.get_entity_archetype(e0).unwrap();
+        let arch1 = store.get_entity_archetype(e1).unwrap();
+
+        assert!(arch0.is_same_as(arch1));
     }
 
     #[test]
-    fn get_entity_archetype_archetypes_are_different() {
+    fn get_entity_archetype_different_archetypes() {
         let arch0 = Archetype::with_components::<(u64, u32)>();
         let arch1 = Archetype::with_components::<u64>();
 
