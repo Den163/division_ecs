@@ -92,7 +92,7 @@ impl Store {
             let mut range_end = range_start + 1;
             while range_end < entities.len() {
                 let inner_entity = entities[range_end];
-                if self.is_valid_entity_for_query::<T>(inner_entity) == false {
+                if self.is_alive(inner_entity) == false {
                     break;
                 }
 
