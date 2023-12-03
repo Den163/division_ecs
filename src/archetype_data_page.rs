@@ -24,13 +24,6 @@ impl ArchetypeDataPage {
         }
     }
 
-    pub(crate) fn empty() -> Self {
-        ArchetypeDataPage {
-            entities_ids: Vec::new(),
-            components_data_ptr: std::ptr::null_mut(),
-        }
-    }
-
     pub(crate) fn set_archetype(&mut self, archetype: &Archetype) {
         let capacity = archetype.entities_capacity();
         self.entities_ids.reserve(capacity);

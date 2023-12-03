@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, Store, Component};
+    use crate::{Archetype, Component, Store};
     use std::mem::MaybeUninit;
 
     impl Component for f32 {}
@@ -49,7 +49,9 @@ mod tests {
             let entity = store.create_entity_with_archetype(&archetype);
             entities.push(entity);
 
-            let (u64_v, u128_v) = store.get_components_refs_mut::<(u64, u128)>(entity);
+            let (u64_v, u128_v) = store
+                .get_components_refs_mut::<(u64, u128)>(entity)
+                .unwrap();
             (*u64_v, *u128_v) = (u64_values[i], u128_values[i]);
         }
 
@@ -57,32 +59,29 @@ mod tests {
             let entity = entities[i];
 
             let (&actual_u64, &actual_u128) =
-                store.get_components_refs::<(u64, u128)>(entity);
+                store.get_components_refs::<(u64, u128)>(entity).unwrap();
             assert_eq!((u64_values[i], u128_values[i]), (actual_u64, actual_u128));
         }
     }
 
     #[test]
-    #[should_panic]
-    fn registry_get_component_ref_mut_panics_if_component_doesnt_exist() {
+    fn registry_get_component_ref_mut_is_none_if_component_doesnt_exist() {
         let mut store = Store::new();
         let archetype = Archetype::with_components::<(u64, u128)>();
 
         let entity = store.create_entity_with_archetype(&archetype);
-        store.get_components_refs_mut::<f32>(entity);
+        assert!(store.get_components_refs_mut::<f32>(entity).is_none());
     }
 
     #[test]
-    #[should_panic]
-    #[cfg(debug_assertions)]
-    fn registry_get_component_ref_mut_panics_if_entity_doesnt_alive() {
+    fn registry_get_component_ref_mut_is_none_if_entity_doesnt_alive() {
         let mut registry = Store::new();
         let archetype = Archetype::with_components::<u64>();
 
         let entity = registry.create_entity_with_archetype(&archetype);
         registry.destroy_entity(entity);
 
-        registry.get_components_refs_mut::<u64>(entity);
+        assert!(registry.get_components_refs_mut::<u64>(entity).is_none());
     }
 
     #[test]
@@ -94,8 +93,9 @@ mod tests {
         let mut swapped_entity = MaybeUninit::uninit();
         for i in 0..4 {
             let e = registry.create_entity_with_archetype(&archetype);
-            let (c1, c2) =
-                registry.get_components_refs_mut::<(TestComponent1, TestComponent2)>(e);
+            let (c1, c2) = registry
+                .get_components_refs_mut::<(TestComponent1, TestComponent2)>(e)
+                .unwrap();
 
             (*c1, *c2) = (TestComponent1::new(i), TestComponent2::new(i));
 
@@ -117,7 +117,8 @@ mod tests {
         registry.destroy_entity(entity_to_swap_remove);
 
         let (actual1, actual2) = registry
-            .get_components_refs_mut::<(TestComponent1, TestComponent2)>(swapped_entity);
+            .get_components_refs_mut::<(TestComponent1, TestComponent2)>(swapped_entity)
+            .unwrap();
 
         assert_eq!(actual1.value, expected1.value);
         assert_eq!(actual2.value, expected2.value);

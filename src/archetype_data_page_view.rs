@@ -1,7 +1,4 @@
-use crate::{
-    archetype_data_page::ArchetypeDataPage,
-    tuple::ComponentsTuple, Archetype,
-};
+use crate::{archetype_data_page::ArchetypeDataPage, tuple::ComponentsTuple, Archetype};
 
 #[derive(Clone, Copy)]
 pub(crate) struct ArchetypeDataPageView<'a> {
@@ -10,22 +7,21 @@ pub(crate) struct ArchetypeDataPageView<'a> {
 }
 
 impl<'a> ArchetypeDataPageView<'a> {
-    pub fn get_components_refs<T>(&self, page_entity_index: usize) -> T::RefsTuple<'a>
-    where
-        T: ComponentsTuple,
-    {
-        let offsets = T::get_offsets_checked(&self.archetype);
-        T::get_refs(self.page, page_entity_index, &offsets)
-    }
-
-    pub fn get_components_refs_mut<T>(
+    pub fn get_components_refs<T: ComponentsTuple>(
         &self,
         page_entity_index: usize,
-    ) -> T::MutRefsTuple<'a>
-    where
-        T: ComponentsTuple,
-    {
-        let offsets = T::get_offsets_checked(&self.archetype);
-        T::get_refs_mut(self.page, page_entity_index, &offsets)
+    ) -> Option<T::RefsTuple<'a>> {
+        T::get_offsets(&self.archetype).map(|o| {
+            T::get_refs(self.page, page_entity_index, &o)
+        })
+    }
+
+    pub fn get_components_refs_mut<T: ComponentsTuple>(
+        &self,
+        page_entity_index: usize,
+    ) -> Option<T::MutRefsTuple<'a>> {
+        T::get_offsets(&self.archetype).map(|o| {
+            T::get_refs_mut(self.page, page_entity_index, &o)
+        })
     }
 }

@@ -44,11 +44,27 @@ mod tests {
     }
 
     #[test]
+    fn create_entity_get_component_refs_is_none() {
+        let mut store = Store::new();
+        let e = store.create_entity();
+
+        assert!(store.get_components_refs::<u32>(e).is_none());
+    }
+
+    #[test]
+    fn create_entity_get_component_refs_mut_is_none() {
+        let mut store = Store::new();
+        let e = store.create_entity();
+
+        assert!(store.get_components_refs_mut::<u32>(e).is_none());
+    }
+
+    #[test]
     fn create_entity_archetype_will_be_empty() {
         let mut store = Store::new();
         let e = store.create_entity();
 
-        assert!(store.get_entity_archetype(e).is_empty());
+        assert!(store.get_entity_archetype(e).is_none());
     }
 
     #[test]
@@ -128,7 +144,7 @@ mod tests {
         for _ in 0..33 {
             let e = reg.create_entity_with_archetype(&arch_stub);
             assert!(reg.is_alive(e));
-            
+
             entities.push(e);
         }
 
@@ -144,8 +160,8 @@ mod tests {
         let e1 = store.create_entity_with_archetype(&arch);
 
         assert!(store
-            .get_entity_archetype(e0)
-            .is_same_as(store.get_entity_archetype(e1)),);
+            .get_entity_archetype(e0).unwrap()
+            .is_same_as(store.get_entity_archetype(e1).unwrap()),);
     }
 
     #[test]
@@ -158,8 +174,8 @@ mod tests {
         let e0 = store.create_entity_with_archetype(&arch0);
         let e1 = store.create_entity_with_archetype(&arch1);
 
-        let arch0 = store.get_entity_archetype(e0);
-        let arch1 = store.get_entity_archetype(e1);
+        let arch0 = store.get_entity_archetype(e0).unwrap();
+        let arch1 = store.get_entity_archetype(e1).unwrap();
 
         assert!(arch0.is_same_as(arch1) == false);
     }

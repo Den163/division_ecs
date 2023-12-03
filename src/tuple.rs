@@ -7,9 +7,9 @@ pub trait ComponentsTuple {
     type RefsTuple<'a>;
     type MutRefsTuple<'a>;
 
-    fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple;
+    fn get_offsets_unchecked(archetype: &Archetype) -> Self::OffsetsTuple;
 
-    fn get_offsets_checked(archetype: &Archetype) -> Self::OffsetsTuple;
+    fn get_offsets(archetype: &Archetype) -> Option<Self::OffsetsTuple>;
 
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
 
@@ -35,12 +35,12 @@ macro_rules! components_tuple_impl {
             type MutRefsTuple<'a> = ($(&'a mut $T),*);
 
             #[inline(always)]
-            fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
+            fn get_offsets_unchecked(archetype: &Archetype) -> Self::OffsetsTuple {
                 unsafe {(
                     $(
                         *(
                             archetype.component_offsets().add(
-                                archetype.find_component_index(std::any::TypeId::of::<$T>())
+                                archetype.find_component_index_of::<$T>()
                                         .unwrap_unchecked()
                             )
                         )
@@ -49,14 +49,16 @@ macro_rules! components_tuple_impl {
             }
 
             #[inline(always)]
-            fn get_offsets_checked(archetype: &Archetype) -> Self::OffsetsTuple {
-                unsafe {(
-                    $(
-                        *(archetype.component_offsets().add(
-                            archetype.find_component_index_typed_checked::<$T>()
-                        ))
-                    ),*
-                )}
+            fn get_offsets(archetype: &Archetype) -> Option<Self::OffsetsTuple> {
+                unsafe {Some((
+                    $({
+                        if let Some(idx) = archetype.find_component_index_of::<$T>() {
+                            *archetype.component_offsets().add(idx)
+                        } else {
+                            return None
+                        }
+                    }),*
+                ))}
             }
 
             #[inline(always)]

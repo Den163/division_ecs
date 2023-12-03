@@ -2,7 +2,6 @@ use std::ops::Range;
 
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    entity_in_archetype::EntityInArchetype,
     query::access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
     tuple::ComponentsTuple,
     Entity, Store,
@@ -22,12 +21,12 @@ pub struct EntityComponentQuery<T: ComponentQueryAccess> {
 }
 
 pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
+    store: &'a Store,
     entities: &'a [Entity],
     entities_chunks: &'a [Range<usize>],
     chunk_components_offsets: &'a [T::OffsetsTuple],
     chunk_pages: &'a [*const ArchetypeDataPage],
-    entity_in_archetypes: *const EntityInArchetype,
-    current_entity_id: usize,
+    current_entity_index: usize,
 
     next_chunk_index: usize,
     next_offset_from_chunk: usize,
@@ -82,14 +81,11 @@ impl Store {
         query.range_to_pages.clear();
         query.range_to_component_offsets.clear();
 
-        let entity_in_archetypes = self.entity_in_archetypes();
-
         let mut i = 0;
         while i < query.entities.len() {
             let chunk_entity = query.entities[i];
-            let chunk_page_location =
-                unsafe { *entity_in_archetypes.add(chunk_entity.id as usize) };
-            let chunk_page_index = chunk_page_location.page_index as usize;
+            let chunk_page_index =
+                unsafe { self.get_page_index_unchecked(chunk_entity.id) as usize };
             let chunk_arch_index = self
                 .archetypes_container
                 .get_archetype_index_by_page(chunk_page_index);
@@ -105,9 +101,10 @@ impl Store {
             let mut j = i + 1;
             while j < query.entities.len() {
                 let e = query.entities[j];
-                let page_location = unsafe { *entity_in_archetypes.add(e.id as usize) };
-
-                if page_location.page_index != chunk_page_location.page_index {
+                let page_index = unsafe {
+                    self.get_page_index_unchecked(e.id) as usize
+                };
+                if page_index != chunk_page_index {
                     break;
                 }
 
@@ -124,14 +121,14 @@ impl Store {
         }
 
         EntityComponentQueryIter {
+            store: &self,
             entities: &query.entities,
             entities_chunks: &query.entity_index_ranges,
             chunk_pages: &query.range_to_pages,
             chunk_components_offsets: &query.range_to_component_offsets,
-            entity_in_archetypes: self.entity_in_archetypes(),
             next_chunk_index: 0,
             next_offset_from_chunk: 0,
-            current_entity_id: 0,
+            current_entity_index: 0,
         }
     }
 }
@@ -146,22 +143,20 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
 
         let current_chunk =
             unsafe { self.entities_chunks.get_unchecked(self.next_chunk_index) };
-        self.current_entity_id = current_chunk.start + self.next_offset_from_chunk;
+        self.current_entity_index = current_chunk.start + self.next_offset_from_chunk;
 
-        let (entity_in_archetype, page, offsets) = unsafe {
-            let current_entity = self.entities.get_unchecked(self.current_entity_id);
-            let entity_in_archetype =
-                *self.entity_in_archetypes.add(current_entity.id as usize);
+        let (index_in_page, page, offsets) = unsafe {
+            let current_entity = self.entities.get_unchecked(self.current_entity_index);
             let page = *self.chunk_pages.get_unchecked(self.next_chunk_index);
             (
-                entity_in_archetype,
+                self.store.get_index_in_page_unchecked(current_entity.id),
                 &*page,
                 self.chunk_components_offsets
                     .get_unchecked(self.next_chunk_index),
             )
         };
 
-        if self.current_entity_id >= current_chunk.end - 1 {
+        if self.current_entity_index >= current_chunk.end - 1 {
             self.next_chunk_index += 1;
             self.next_offset_from_chunk = 0;
         } else {
@@ -170,7 +165,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
 
         Some(T::get_refs(
             page,
-            entity_in_archetype.index_in_page as usize,
+            index_in_page as usize,
             &offsets,
         ))
     }
@@ -191,7 +186,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
                 *self
                     .source_iter
                     .entities
-                    .get_unchecked(self.source_iter.current_entity_id),
+                    .get_unchecked(self.source_iter.current_entity_index),
                 components,
             )
         })

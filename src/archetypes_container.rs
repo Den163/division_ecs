@@ -27,24 +27,20 @@ impl ArchetypesContainer {
     const ARCHETYPE_PAGE_DEFAULT_CAPACITY: usize = 5;
 
     pub fn new() -> ArchetypesContainer {
-        let mut archetypes = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
-        archetypes.push(Archetype::empty());
+        let archetypes = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
 
-        let mut archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
-        archetype_to_pages.push(ArchetypePages { pages: Vec::new() });
+        let archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
 
-        let mut pages = Vec::with_capacity(Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY);
-        pages.push(ArchetypeDataPage::empty()); // First data pages just simulates for empty archetype
-        pages.extend(
-            (1..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).map(|_| ArchetypeDataPage::new()),
-        );
+        let pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
+            .map(|_| ArchetypeDataPage::new())
+            .collect();
 
         let page_to_archetype = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
             .map(|_| 0)
             .collect();
 
         let free_archetypes = Vec::new();
-        let free_pages = (1..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
+        let free_pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
 
         ArchetypesContainer {
             archetypes,
@@ -98,10 +94,6 @@ impl ArchetypesContainer {
     ) -> Option<SwapRemoveInfo> {
         let page_index = entity_in_archetype.page_index as usize;
         let arch_index = self.page_to_archetype[page_index];
-
-        if arch_index == 0 {
-            return None;
-        }
 
         let page = &mut self.pages[page_index];
         let page_will_empty = page.entities_count() == 1;
@@ -207,8 +199,7 @@ impl ArchetypesContainer {
             None => {
                 let page_index = self.pages.len();
                 self.pages.insert(page_index, ArchetypeDataPage::new());
-                self.page_to_archetype
-                    .insert(page_index, archetype_index);
+                self.page_to_archetype.insert(page_index, archetype_index);
                 page_index
             }
         };

@@ -1,7 +1,6 @@
 use std::{
     any::TypeId,
     hash::{Hash, Hasher},
-    ptr::null_mut,
 };
 
 use crate::{
@@ -115,17 +114,6 @@ impl Archetype {
         component_offsets
     }
 
-    pub(crate) fn empty() -> Archetype {
-        Archetype {
-            ids: null_mut(),
-            sizes: null_mut(),
-            aligns: null_mut(),
-            offsets: null_mut(),
-            entities_capacity: 0,
-            component_count: 0,
-        }
-    }
-
     #[inline(always)]
     pub fn has_component<T: 'static>(&self) -> bool {
         self.find_component_index(TypeId::of::<T>()).is_some()
@@ -138,18 +126,8 @@ impl Archetype {
         })
     }
 
-    pub fn find_component_index_typed_checked<T: 'static>(&self) -> usize {
-        let type_id = std::any::TypeId::of::<T>();
-        unsafe {
-            let slice = &*std::ptr::slice_from_raw_parts(self.ids, self.component_count);
-            match slice.binary_search(&type_id) {
-                Ok(idx) => idx,
-                Err(_) => {
-                    let type_name = std::any::type_name::<T>();
-                    panic!("There is no type {type_name} in the archetype");
-                }
-            }
-        }
+    pub fn find_component_index_of<T: 'static>(&self) -> Option<usize> {
+        self.find_component_index(std::any::TypeId::of::<T>())
     }
 
     pub fn find_component_index(&self, type_id: TypeId) -> Option<usize> {

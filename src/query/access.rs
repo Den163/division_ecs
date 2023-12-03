@@ -40,8 +40,8 @@ where
 
     fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
         (
-            TRead::get_offsets(archetype),
-            TWrite::get_offsets(archetype),
+            TRead::get_offsets_unchecked(archetype),
+            TWrite::get_offsets_unchecked(archetype),
         )
     }
 
@@ -79,7 +79,7 @@ impl<TRead: ComponentsTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
     }
 
     fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
-        TRead::get_offsets(archetype)
+        TRead::get_offsets_unchecked(archetype)
     }
 }
 
@@ -100,6 +100,6 @@ impl<TWrite: ComponentsTuple> ComponentQueryAccess for WriteAccess<TWrite> {
     }
 
     fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
-        TWrite::get_offsets(archetype)
+        TWrite::get_offsets_unchecked(archetype)
     }
 }

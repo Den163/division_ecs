@@ -80,8 +80,8 @@ mod test {
 
         for i in 0..INIT_ENTITIES_COUNT {
             let e = store.create_entity_with_archetype(&arch);
-            let v = store.get_components_refs_mut::<usize>(e);
-            (*v) = i;
+            let v = store.get_components_refs_mut::<usize>(e).unwrap();
+            *v = i;
 
             if entities_to_destroy.contains(&i) {
                 store.destroy_entity(e);

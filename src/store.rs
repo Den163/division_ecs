@@ -1,8 +1,9 @@
 use crate::{
     archetype::Archetype, archetype_data_page::ArchetypeDataPage,
     archetype_data_page_view::ArchetypeDataPageView,
-    archetypes_container::ArchetypesContainer, entities_container::EntitiesContainer,
-    entity_in_archetype::EntityInArchetype, mem_utils, tuple::ComponentsTuple, Entity,
+    archetypes_container::ArchetypesContainer, bitvec_utils,
+    entities_container::EntitiesContainer, entity_in_archetype::EntityInArchetype,
+    mem_utils, tuple::ComponentsTuple, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -12,7 +13,9 @@ pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
 
-    entity_in_archetypes: *mut EntityInArchetype,
+    entity_to_page: *mut u32,
+    entity_to_index_in_page: *mut u32,
+    entity_has_archetype_bit_vec: *mut u32,
 }
 
 impl Store {
@@ -24,7 +27,10 @@ impl Store {
         Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
-            entity_in_archetypes: unsafe { mem_utils::alloc_zeroed(capacity) },
+
+            entity_has_archetype_bit_vec: unsafe { bitvec_utils::alloc(capacity) },
+            entity_to_index_in_page: unsafe { mem_utils::alloc_zeroed(capacity) },
+            entity_to_page: unsafe { mem_utils::alloc_zeroed(capacity) },
         }
     }
 
@@ -40,10 +46,9 @@ impl Store {
     pub fn create_entity(&mut self) -> Entity {
         let entity = self.register_new_entity();
 
-        *self.get_entity_in_archetype_ref_mut(entity.id) = EntityInArchetype {
-            page_index: 0,
-            index_in_page: 0
-        };
+        unsafe {
+            self.disable_archetype_unchecked(entity.id);
+        }
 
         return entity;
     }
@@ -54,7 +59,11 @@ impl Store {
             .archetypes_container
             .add_entity_with_archetype(entity.id, archetype);
 
-        *self.get_entity_in_archetype_ref_mut(entity.id) = entity_in_arch;
+        unsafe {
+            self.set_page_index_unchecked(entity.id, entity_in_arch.page_index);
+            self.set_index_in_page_unchecked(entity.id, entity_in_arch.index_in_page);
+            self.enable_archetype_unchecked(entity.id)
+        }
 
         entity
     }
@@ -62,19 +71,29 @@ impl Store {
     fn register_new_entity(&mut self) -> Entity {
         let creation = self.entities_container.create_entity();
         if creation.container_was_grow() {
-            self.grow_entities_in_archetype(creation.capacity_before);
+            self.grow_entities_internal(creation.capacity_before);
         }
 
         creation.entity
     }
 
     pub fn destroy_entity(&mut self, entity: Entity) {
-        let entity_in_arch = *self.get_entity_in_archetype_ref(entity.id);
+        let entity_in_arch = unsafe {
+            EntityInArchetype {
+                page_index: self.get_page_index_unchecked(entity.id),
+                index_in_page: self.get_index_in_page_unchecked(entity.id),
+            }
+        };
+
         let swap_remove = self.archetypes_container.swap_remove_entity(entity_in_arch);
 
         if let Some(swap_remove) = swap_remove {
-            let swapped = self.get_entity_in_archetype_ref_mut(swap_remove.id_to_replace);
-            swapped.index_in_page = entity_in_arch.index_in_page;
+            unsafe {
+                self.set_index_in_page_unchecked(
+                    swap_remove.id_to_replace,
+                    entity_in_arch.index_in_page,
+                );
+            }
         }
 
         self.entities_container.destroy_entity(entity)
@@ -86,85 +105,128 @@ impl Store {
     }
 
     #[inline(always)]
-    pub fn get_components_refs<'a, T>(&'a self, entity: Entity) -> T::RefsTuple<'a>
-    where
-        T: ComponentsTuple,
-    {
-        let (entity_in_archetype, page_view) = self.get_components_refs_info(entity);
-        page_view.get_components_refs::<T>(entity_in_archetype.index_in_page as usize)
-    }
-
-    #[inline(always)]
-    pub fn get_components_refs_mut<'a, T>(
-        &'a mut self,
-        entity: Entity,
-    ) -> T::MutRefsTuple<'a>
-    where
-        T: ComponentsTuple,
-    {
-        let (entity_in_archetype, page_view) = self.get_components_refs_info(entity);
-        page_view.get_components_refs_mut::<T>(entity_in_archetype.index_in_page as usize)
-    }
-
-    #[inline(always)]
-    pub fn get_entity_archetype(&self, entity: Entity) -> &Archetype {
-        debug_assert!(self.is_alive(entity));
-
-        let entity_in_archetype =
-            unsafe { *self.entity_in_archetypes.add(entity.id as usize) };
-
-        let page_index = entity_in_archetype.page_index as usize;
-        self.archetypes_container.get_archetype_by_page(page_index)
-    }
-
-    fn get_components_refs_info<'a>(
+    pub fn get_components_refs<'a, T: ComponentsTuple>(
         &'a self,
         entity: Entity,
-    ) -> (EntityInArchetype, ArchetypeDataPageView<'a>) {
-        debug_assert!(self.is_alive(entity));
-
-        let entity_in_archetype = self.get_entity_in_archetype_ref(entity.id);
-        (*entity_in_archetype, unsafe {
-            self.archetypes_container
-                .get_page_view_unchecked(entity_in_archetype.page_index as usize)
-        })
+    ) -> Option<T::RefsTuple<'a>> {
+        if self.is_valid_entity_with_archetype(entity) {
+            let (page_view, index_in_page) = unsafe { self.get_page_info(entity.id) };
+            page_view.get_components_refs::<T>(index_in_page)
+        } else {
+            None
+        }
     }
 
     #[inline(always)]
-    fn grow_entities_in_archetype(&mut self, old_capacity: usize) {
-        self.entity_in_archetypes = unsafe {
-            mem_utils::realloc_with_uninit_capacity_zeroing(
-                self.entity_in_archetypes,
-                old_capacity,
-                self.entities_container.capacity(),
+    pub fn get_components_refs_mut<'a, T: ComponentsTuple>(
+        &'a mut self,
+        entity: Entity,
+    ) -> Option<T::MutRefsTuple<'a>> {
+        if self.is_valid_entity_with_archetype(entity) {
+            let (page_view, index_in_page) = unsafe { self.get_page_info(entity.id) };
+            page_view.get_components_refs_mut::<T>(index_in_page)
+        } else {
+            None
+        }
+    }
+
+    unsafe fn get_page_info(&self, entity_id: u32) -> (ArchetypeDataPageView, usize) {
+        unsafe {
+            (
+                self.get_page_view_unchecked(entity_id),
+                self.get_index_in_page_unchecked(entity_id) as usize,
             )
+        }
+    }
+
+    #[inline(always)]
+    unsafe fn get_page_view_unchecked(&self, entity_id: u32) -> ArchetypeDataPageView {
+        let page_index = self.get_page_index_unchecked(entity_id) as usize;
+        self.archetypes_container
+            .get_page_view_unchecked(page_index)
+    }
+
+    #[inline(always)]
+    pub fn get_entity_archetype(&self, entity: Entity) -> Option<&Archetype> {
+        if self.is_valid_entity_with_archetype(entity) == false {
+            return None;
+        }
+
+        let page_index = unsafe { *self.entity_to_page.add(entity.id as usize) as usize };
+
+        Some(self.archetypes_container.get_archetype_by_page(page_index))
+    }
+
+    #[inline]
+    pub fn is_valid_entity_with_archetype(&self, entity: Entity) -> bool {
+        self.is_alive(entity) && unsafe { self.has_archetype_unchecked(entity.id) }
+    }
+
+    #[inline(always)]
+    fn grow_entities_internal(&mut self, old_capacity: usize) {
+        let new_capacity = self.entities_capacity();
+        unsafe {
+            self.entity_to_page =
+                mem_utils::realloc(self.entity_to_page, old_capacity, new_capacity);
+
+            self.entity_to_index_in_page = mem_utils::realloc(
+                self.entity_to_index_in_page,
+                old_capacity,
+                new_capacity,
+            );
+
+            self.entity_has_archetype_bit_vec = bitvec_utils::realloc(
+                self.entity_has_archetype_bit_vec,
+                old_capacity,
+                new_capacity,
+            );
         };
     }
 
-    pub(crate) fn entity_in_archetypes(&self) -> *const EntityInArchetype {
-        self.entity_in_archetypes
+    #[inline(always)]
+    pub(crate) unsafe fn get_page_index_unchecked(&self, entity_id: u32) -> u32 {
+        *self.entity_to_page.add(entity_id as usize)
     }
 
     #[inline(always)]
-    fn get_entity_in_archetype_ref(&self, id: u32) -> &EntityInArchetype {
-        self.entities_container.debug_validate_id_with_panic(id);
-        unsafe { &*self.entity_in_archetypes.add(id as usize) }
+    pub(crate) unsafe fn get_index_in_page_unchecked(&self, entity_id: u32) -> u32 {
+        *self.entity_to_index_in_page.add(entity_id as usize)
     }
 
     #[inline(always)]
-    fn get_entity_in_archetype_ref_mut(&mut self, id: u32) -> &mut EntityInArchetype {
-        self.entities_container.debug_validate_id_with_panic(id);
-        unsafe { &mut *self.entity_in_archetypes.add(id as usize) }
+    pub(crate) unsafe fn has_archetype_unchecked(&self, entity_id: u32) -> bool {
+        bitvec_utils::is_bit_on(self.entity_has_archetype_bit_vec, entity_id as usize)
+    }
+
+    #[inline(always)]
+    unsafe fn set_page_index_unchecked(&mut self, entity_id: u32, page_index: u32) {
+        *self.entity_to_page.add(entity_id as usize) = page_index
+    }
+
+    #[inline(always)]
+    unsafe fn set_index_in_page_unchecked(&mut self, entity_id: u32, index_in_page: u32) {
+        *self.entity_to_index_in_page.add(entity_id as usize) = index_in_page
+    }
+
+    #[inline(always)]
+    unsafe fn enable_archetype_unchecked(&mut self, entity_id: u32) {
+        bitvec_utils::set_bit_on(self.entity_has_archetype_bit_vec, entity_id as usize)
+    }
+
+    #[inline(always)]
+    unsafe fn disable_archetype_unchecked(&mut self, entity_id: u32) {
+        bitvec_utils::set_bit_off(self.entity_has_archetype_bit_vec, entity_id as usize)
     }
 }
 
 impl Drop for Store {
     fn drop(&mut self) {
         unsafe {
-            mem_utils::dealloc(
-                self.entity_in_archetypes,
-                self.entities_container.capacity(),
-            )
+            let capacity = self.entities_container.capacity();
+
+            mem_utils::dealloc(self.entity_to_index_in_page, capacity);
+            mem_utils::dealloc(self.entity_to_page, capacity);
+            bitvec_utils::dealloc(self.entity_has_archetype_bit_vec, capacity);
         }
     }
 }
