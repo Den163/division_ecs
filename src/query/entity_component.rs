@@ -71,6 +71,8 @@ impl Store {
         query.filtered_entities.clear();
 
         query.filtered_entities.reserve(entities.len());
+
+        // TODO: This filter need to optimize strongly
         query.filtered_entities.extend(
             entities
                 .iter()
