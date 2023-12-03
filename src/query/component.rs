@@ -25,7 +25,7 @@ pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
     curr_page_ptr: *const ArchetypeDataPage,
 
     current_page_view_index: usize,
-    next_entity_index: usize,
+    next_entity_id: usize,
 }
 
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
@@ -97,7 +97,7 @@ impl Store {
 
         ComponentsQueryIter {
             current_page_view_index: 0,
-            next_entity_index: 0,
+            next_entity_id: 0,
             components_offsets: &query.components_offsets,
             page_views: &query.page_views,
             store: self,
@@ -122,9 +122,9 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
         let mut curr_page = unsafe { &*curr_page_view.page };
         let entities_ids = curr_page.entities_ids();
 
-        if self.next_entity_index >= entities_ids.len() {
+        if self.next_entity_id >= entities_ids.len() {
             self.current_page_view_index += 1;
-            self.next_entity_index = 0;
+            self.next_entity_id = 0;
 
             if self.current_page_view_index >= page_view_count {
                 return None;
@@ -133,20 +133,17 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
             curr_page_view =
                 unsafe { page_views.get_unchecked(self.current_page_view_index) };
             curr_page = unsafe { &*curr_page_view.page };
-            // entities_ids = curr_page.entities_ids();
         }
 
         self.curr_page_ptr = curr_page_view.page;
 
         unsafe {
-            let curr_entity_idx = self.next_entity_index;
-            // let id = *entities_ids.get_unchecked(curr_entity_idx);
-            // let version = *self.entities_versions.get_unchecked(id as usize);
+            let curr_entity_idx = self.next_entity_id;
             let offsets = self
                 .components_offsets
                 .get_unchecked(curr_page_view.components_offsets_index);
 
-            self.next_entity_index += 1;
+            self.next_entity_id += 1;
 
             return Some(T::get_refs(curr_page, curr_entity_idx, offsets));
         }
@@ -169,10 +166,10 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.source_iter.next().map(|result| unsafe {
-            let entity_index = self.source_iter.next_entity_index - 1;
+            let curr_entity_id = self.source_iter.next_entity_id - 1;
             let page = &*self.source_iter.curr_page_ptr;
 
-            let id = *page.entities_ids().get_unchecked(entity_index);
+            let id = *page.entities_ids().get_unchecked(curr_entity_id);
             let version = *self.entities_versions.add(id as usize);
 
             return (Entity { id, version }, result);
