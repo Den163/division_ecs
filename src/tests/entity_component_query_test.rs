@@ -66,7 +66,7 @@ mod test {
             EntityComponentReadOnlyQuery::<TestComponent2>::with_entities(&entities);
 
         let mut i = 0;
-        for (e, c) in store.entity_component_query_iter(&mut query) {
+        for (e, c) in store.entity_component_query_iter(&mut query).with_entities() {
             assert_eq!(e, entities[i]);
             assert_eq!(c.value, component_values[i].value);
 

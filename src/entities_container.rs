@@ -135,8 +135,8 @@ impl EntitiesContainer {
     }
 
     #[inline(always)]
-    pub(crate) fn entity_versions(&self) -> &[u32] {
-        unsafe { &*std::ptr::slice_from_raw_parts(self.entity_to_version, self.capacity) }
+    pub(crate) fn entity_versions(&self) -> *const u32 {
+        self.entity_to_version
     }
 
     #[inline(always)]

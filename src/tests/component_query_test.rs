@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod test {
     use crate::{
-        component_query::ComponentReadOnlyQuery, Component,
-        ComponentWriteQuery, Store, Archetype,
+        component_query::ComponentReadOnlyQuery, Archetype, Component,
+        ComponentWriteQuery, Store,
     };
 
     #[derive(Debug, PartialEq, Component, Clone, Copy)]
@@ -16,9 +16,7 @@ mod test {
         angle: f64,
     }
 
-    impl Component for usize {
-
-    }
+    impl Component for usize {}
 
     #[test]
     fn write_and_read_query_test() {
@@ -37,9 +35,9 @@ mod test {
             store.create_entity_with_archetype(arch);
         }
 
-        let mut write_query = ComponentWriteQuery::<(Position, Rotation)>::new();
+        let mut query = ComponentWriteQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
-        for (e, (pos, rot)) in store.component_query_iter(&mut write_query) {
+        for (e, (pos, rot)) in store.component_query_iter(&mut query).with_entities() {
             entities.push(e);
 
             let (expected_pos, expected_rot, _) = expected_data[iter_count];
@@ -56,9 +54,9 @@ mod test {
         store.create_entity_with_archetype(&other_arch);
         store.create_entity_with_archetype(&other_arch);
 
-        let mut read_query = ComponentReadOnlyQuery::<(Position, Rotation)>::new();
+        let mut query = ComponentReadOnlyQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
-        for (e, (pos, rot)) in store.component_query_iter(&mut read_query) {
+        for (e, (pos, rot)) in store.component_query_iter(&mut query).with_entities() {
             iter_count += 1;
 
             let e_idx = entities.iter().position(|e_check| *e_check == e).unwrap();
@@ -93,12 +91,16 @@ mod test {
         }
 
         let mut iterated_entities = Vec::new();
-        for (e, v) in store.component_query_iter(&mut ComponentReadOnlyQuery::<usize>::new()) {
+        let query = &mut ComponentReadOnlyQuery::<usize>::new();
+        for (e, v) in store.component_query_iter(query).with_entities()
+        {
             iterated_entities.push(e);
 
             assert!(entities_to_destroy.contains(v) == false);
         }
 
-        assert!(expected_to_iterate.iter().all(|e| iterated_entities.contains(e)));
+        assert!(expected_to_iterate
+            .iter()
+            .all(|e| iterated_entities.contains(e)));
     }
 }

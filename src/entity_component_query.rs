@@ -29,9 +29,14 @@ pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
     chunk_components_offsets: &'a [T::OffsetsTuple],
     chunk_pages: &'a [*const ArchetypeDataPage],
     entity_in_archetypes: *const EntityInArchetype,
+    current_entity_index: usize,
 
-    current_chunk_index: usize,
-    current_offset_from_chunk: usize,
+    next_chunk_index: usize,
+    next_offset_from_chunk: usize,
+}
+
+pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
+    source_iter: EntityComponentQueryIter<'a, T>
 }
 
 impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
@@ -122,48 +127,65 @@ impl Store {
             chunk_pages: &query.range_to_pages,
             chunk_components_offsets: &query.range_to_component_offsets,
             entity_in_archetypes: self.entity_in_archetypes(),
-            current_chunk_index: 0,
-            current_offset_from_chunk: 0,
+            next_chunk_index: 0,
+            next_offset_from_chunk: 0,
+            current_entity_index: 0,
         }
     }
 }
 
 impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
-    type Item = (Entity, T::AccessOutput<'a>);
+    type Item = T::AccessOutput<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_chunk_index >= self.entities_chunks.len() {
+        if self.next_chunk_index >= self.entities_chunks.len() {
             return None;
         }
 
         let current_chunk =
-            unsafe { self.entities_chunks.get_unchecked(self.current_chunk_index) };
-        let current_entity_index = current_chunk.start + self.current_offset_from_chunk;
+            unsafe { self.entities_chunks.get_unchecked(self.next_chunk_index) };
+        self.current_entity_index = current_chunk.start + self.next_offset_from_chunk;
 
-        let (current_entity, entity_in_archetype, page, offsets) = unsafe {
-            let current_entity = *self.entities.get_unchecked(current_entity_index);
+        let (entity_in_archetype, page, offsets) = unsafe {
+            let current_entity = self.entities.get_unchecked(self.current_entity_index);
             let entity_in_archetype =
                 *self.entity_in_archetypes.add(current_entity.id as usize);
-            let page = *self.chunk_pages.get_unchecked(self.current_chunk_index);
+            let page = *self.chunk_pages.get_unchecked(self.next_chunk_index);
             (
-                current_entity,
                 entity_in_archetype,
                 &*page,
                 self.chunk_components_offsets
-                    .get_unchecked(self.current_chunk_index),
+                    .get_unchecked(self.next_chunk_index),
             )
         };
 
-        if current_entity_index >= current_chunk.end - 1 {
-            self.current_chunk_index += 1;
-            self.current_offset_from_chunk = 0;
+        if self.current_entity_index >= current_chunk.end - 1 {
+            self.next_chunk_index += 1;
+            self.next_offset_from_chunk = 0;
         } else {
-            self.current_offset_from_chunk += 1;
+            self.next_offset_from_chunk += 1;
         }
 
-        Some((
-            current_entity,
+        Some(
             T::get_refs(page, entity_in_archetype.index_in_page as usize, &offsets),
-        ))
+        )
+    }
+}
+
+impl<'a, T: ComponentQueryAccess> EntityComponentQueryIter<'a, T> {
+    pub fn with_entities(self) -> WithEntitiesIter<'a, T> {
+        WithEntitiesIter {
+            source_iter: self
+        }
+    }
+}
+
+impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
+    type Item = (Entity, T::AccessOutput<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.source_iter.next().map(|components| {
+            (self.source_iter.entities[self.source_iter.current_entity_index], components)
+        })
     }
 }
