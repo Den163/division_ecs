@@ -37,17 +37,35 @@ impl Store {
         self.entities_container.capacity()
     }
 
-    pub fn create_entity_with_archetype(&mut self, archetype: &Archetype) -> Entity {
-        let creation = self.entities_container.create_entity();
-        let entity = creation.entity;
-        let entity_in_arch = self.archetypes_container.add_entity(entity.id, archetype);
+    pub fn create_entity(&mut self) -> Entity {
+        let entity = self.register_new_entity();
 
-        if creation.container_was_grow() {
-            self.grow_entities_in_archetype(creation.capacity_before);
-        }
+        *self.get_entity_in_archetype_ref_mut(entity.id) = EntityInArchetype {
+            page_index: 0,
+            index_in_page: 0
+        };
+
+        return entity;
+    }
+
+    pub fn create_entity_with_archetype(&mut self, archetype: &Archetype) -> Entity {
+        let entity = self.register_new_entity();
+        let entity_in_arch = self
+            .archetypes_container
+            .add_entity_with_archetype(entity.id, archetype);
+
         *self.get_entity_in_archetype_ref_mut(entity.id) = entity_in_arch;
 
         entity
+    }
+
+    fn register_new_entity(&mut self) -> Entity {
+        let creation = self.entities_container.create_entity();
+        if creation.container_was_grow() {
+            self.grow_entities_in_archetype(creation.capacity_before);
+        }
+
+        creation.entity
     }
 
     pub fn destroy_entity(&mut self, entity: Entity) {

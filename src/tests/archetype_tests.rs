@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, ArchetypeBuilder, Component, Store};
+    use crate::{Archetype, ArchetypeBuilder, Component};
 
     #[derive(Component, Clone, Copy)]
     struct TestType1 {
@@ -80,34 +80,5 @@ mod tests {
         let same_types_arch = ArchetypeBuilder::new().include_archetype(&arch).build();
 
         assert!(arch.is_exclude(&same_types_arch) == false);
-    }
-
-    #[test]
-    fn store_get_entity_archetype_archetypes_are_same() {
-        let arch = Archetype::with_components::<(u64, u32)>();
-        let mut store = Store::new();
-
-        let e0 = store.create_entity_with_archetype(&arch);
-        let e1 = store.create_entity_with_archetype(&arch);
-
-        assert!(store
-            .get_entity_archetype(e0)
-            .is_same_as(store.get_entity_archetype(e1)),);
-    }
-
-    #[test]
-    fn store_get_entity_archetype_archetypes_are_different() {
-        let arch0 = Archetype::with_components::<(u64, u32)>();
-        let arch1 = Archetype::with_components::<u64>();
-
-        let mut store = Store::new();
-
-        let e0 = store.create_entity_with_archetype(&arch0);
-        let e1 = store.create_entity_with_archetype(&arch1);
-
-        let arch0 = store.get_entity_archetype(e0);
-        let arch1 = store.get_entity_archetype(e1);
-
-        assert!(arch0.is_same_as(arch1) == false);
     }
 }

@@ -10,7 +10,7 @@ mod tests {
     }
 
     #[test]
-    fn create_new_entity_returns_with_new_id_and_first_version() {
+    fn create_entity_with_archetype_returns_with_new_id_and_first_version() {
         let arch_stub = create_archetype_stub();
         let mut reg = Store::new();
         let e1 = reg.create_entity_with_archetype(&arch_stub);
@@ -23,7 +23,7 @@ mod tests {
     }
 
     #[test]
-    fn create_new_entity_oversized_will_increase_capacity() {
+    fn create_entity_with_archetype_oversized_will_increase_capacity() {
         let arch_stub = create_archetype_stub();
         let mut reg = Store::with_capacity(1);
         reg.create_entity_with_archetype(&arch_stub);
@@ -33,6 +33,22 @@ mod tests {
         reg.create_entity_with_archetype(&arch_stub);
 
         assert_ne!(reg.entities_capacity(), 1);
+    }
+
+    #[test]
+    fn create_entity_entity_is_alive() {
+        let mut store = Store::new();
+        let e = store.create_entity();
+
+        assert!(store.is_alive(e));
+    }
+
+    #[test]
+    fn create_entity_archetype_will_be_empty() {
+        let mut store = Store::new();
+        let e = store.create_entity();
+
+        assert!(store.get_entity_archetype(e).is_empty());
     }
 
     #[test]
@@ -117,6 +133,35 @@ mod tests {
         }
 
         assert!(entities.into_iter().all(|e| reg.is_alive(e)));
+    }
+
+    #[test]
+    fn get_entity_archetype_archetypes_are_same() {
+        let arch = Archetype::with_components::<(u64, u32)>();
+        let mut store = Store::new();
+
+        let e0 = store.create_entity_with_archetype(&arch);
+        let e1 = store.create_entity_with_archetype(&arch);
+
+        assert!(store
+            .get_entity_archetype(e0)
+            .is_same_as(store.get_entity_archetype(e1)),);
+    }
+
+    #[test]
+    fn get_entity_archetype_archetypes_are_different() {
+        let arch0 = Archetype::with_components::<(u64, u32)>();
+        let arch1 = Archetype::with_components::<u64>();
+
+        let mut store = Store::new();
+
+        let e0 = store.create_entity_with_archetype(&arch0);
+        let e1 = store.create_entity_with_archetype(&arch1);
+
+        let arch0 = store.get_entity_archetype(e0);
+        let arch1 = store.get_entity_archetype(e1);
+
+        assert!(arch0.is_same_as(arch1) == false);
     }
 
     fn create_archetype_stub() -> Archetype {

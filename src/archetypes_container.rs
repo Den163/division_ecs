@@ -11,7 +11,7 @@ pub(crate) struct ArchetypesContainer {
     archetype_to_pages: Vec<ArchetypePages>,
 
     pages: Vec<ArchetypeDataPage>,
-    page_to_archetype: Vec<isize>,
+    page_to_archetype: Vec<usize>,
 
     free_archetypes: Vec<usize>,
     free_pages: Vec<usize>,
@@ -33,16 +33,18 @@ impl ArchetypesContainer {
         let mut archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
         archetype_to_pages.push(ArchetypePages { pages: Vec::new() });
 
-        let pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
-            .map(|_| ArchetypeDataPage::new())
-            .collect();
+        let mut pages = Vec::with_capacity(Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY);
+        pages.push(ArchetypeDataPage::empty()); // First data pages just simulates for empty archetype
+        pages.extend(
+            (1..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).map(|_| ArchetypeDataPage::new()),
+        );
 
         let page_to_archetype = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY)
-            .map(|_| -1)
+            .map(|_| 0)
             .collect();
 
         let free_archetypes = Vec::new();
-        let free_pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
+        let free_pages = (1..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
 
         ArchetypesContainer {
             archetypes,
@@ -56,7 +58,7 @@ impl ArchetypesContainer {
         }
     }
 
-    pub fn add_entity(
+    pub fn add_entity_with_archetype(
         &mut self,
         entity_id: u32,
         archetype: &Archetype,
@@ -95,10 +97,15 @@ impl ArchetypesContainer {
         entity_in_archetype: EntityInArchetype,
     ) -> Option<SwapRemoveInfo> {
         let page_index = entity_in_archetype.page_index as usize;
+        let arch_index = self.page_to_archetype[page_index];
+
+        if arch_index == 0 {
+            return None;
+        }
+
         let page = &mut self.pages[page_index];
         let page_will_empty = page.entities_count() == 1;
 
-        let arch_index = self.page_to_archetype[page_index] as usize;
         let arch = &self.archetypes[arch_index];
         let swap_remove = page.swap_remove_entity_at_index(
             entity_in_archetype.index_in_page as usize,
@@ -152,7 +159,7 @@ impl ArchetypesContainer {
 
     fn free_page(&mut self, page_index: usize) {
         let archetype_index = self.page_to_archetype[page_index];
-        if archetype_index < 0 {
+        if archetype_index == 0 {
             return;
         }
         let archetype_index = archetype_index as usize;
@@ -201,7 +208,7 @@ impl ArchetypesContainer {
                 let page_index = self.pages.len();
                 self.pages.insert(page_index, ArchetypeDataPage::new());
                 self.page_to_archetype
-                    .insert(page_index, archetype_index as isize);
+                    .insert(page_index, archetype_index);
                 page_index
             }
         };
@@ -212,7 +219,7 @@ impl ArchetypesContainer {
         self.archetype_to_pages[archetype_index]
             .pages
             .push(page_index);
-        self.page_to_archetype[page_index] = archetype_index as isize;
+        self.page_to_archetype[page_index] = archetype_index;
 
         page_index
     }
