@@ -115,6 +115,7 @@ impl Store {
             let prev_arch_index = self
                 .archetypes_container
                 .get_archetype_index_by_page(prev_entity_in_arch.page_index as usize);
+
             let prev_arch = unsafe {
                 self.archetypes_container
                     .get_archetypes()
@@ -125,39 +126,24 @@ impl Store {
                 .include_components::<T>()
                 .build();
 
-            let entity_in_arch =
-                self.archetypes_container.move_entity_to_other_archetype(
-                    entity.id,
-                    prev_entity_in_arch,
-                    prev_arch_index,
-                    &new_arch,
-                );
-            unsafe {
-                self.set_page_index_unchecked(entity.id, entity_in_arch.page_index);
-                self.set_index_in_page_unchecked(entity.id, entity_in_arch.index_in_page);
-            }
-
-            self.swap_remove_internal(entity_in_arch);
-
-            entity_in_arch
+            self.move_entity_to_other_archetype(entity, &new_arch)
         } else {
             let archetype = Archetype::with_components::<T>();
             let entity_in_arch =
                 self.archetypes_container.add_entity(entity.id, &archetype);
 
             unsafe {
+                self.set_page_index_unchecked(entity.id, entity_in_arch.page_index);
+                self.set_index_in_page_unchecked(
+                    entity.id,
+                    entity_in_arch.index_in_page,
+                );
                 self.enable_archetype_unchecked(entity.id);
             }
             entity_in_arch
         };
 
         unsafe {
-            self.set_page_index_unchecked(entity.id, entity_in_archetype.page_index);
-            self.set_index_in_page_unchecked(
-                entity.id,
-                entity_in_archetype.index_in_page,
-            );
-
             let page_view = self
                 .archetypes_container
                 .get_page_view_unchecked(entity_in_archetype.page_index as usize);
@@ -167,6 +153,58 @@ impl Store {
             );
             T::assign_to_refs(refs, components);
         };
+    }
+
+    pub fn remove_components<T: ArchetypeBuilerTupleExtension + 'static>(
+        &mut self,
+        entity: Entity,
+    ) {
+        if !self.is_valid_entity_with_archetype(entity) {
+            return;
+        }
+
+        let prev_entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
+        let prev_arch_index = self
+            .archetypes_container
+            .get_archetype_index_by_page(prev_entity_in_arch.page_index as usize);
+
+        let prev_arch = unsafe {
+            self.archetypes_container
+                .get_archetypes()
+                .get_unchecked(prev_arch_index)
+        };
+        let new_arch = ArchetypeBuilder::new()
+            .include_archetype(&prev_arch)
+            .exclude_components::<T>()
+            .build();
+
+        self.move_entity_to_other_archetype(entity, &new_arch);
+    }
+
+    fn move_entity_to_other_archetype(
+        &mut self,
+        entity: Entity,
+        new_arch: &Archetype,
+    ) -> EntityInArchetype {
+        let prev_entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
+        let prev_arch_index = self
+            .archetypes_container
+            .get_archetype_index_by_page(prev_entity_in_arch.page_index as usize);
+
+        let entity_in_arch = self.archetypes_container.move_entity_to_other_archetype(
+            entity.id,
+            prev_entity_in_arch,
+            prev_arch_index,
+            &new_arch,
+        );
+        unsafe {
+            self.set_page_index_unchecked(entity.id, entity_in_arch.page_index);
+            self.set_index_in_page_unchecked(entity.id, entity_in_arch.index_in_page);
+        }
+
+        self.swap_remove_internal(prev_entity_in_arch);
+
+        entity_in_arch
     }
 
     fn swap_remove_internal(&mut self, entity_in_archetype: EntityInArchetype) {

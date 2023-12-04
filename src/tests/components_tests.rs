@@ -7,12 +7,12 @@ mod tests {
     impl Component for u64 {}
     impl Component for u128 {}
 
-    #[derive(Component, Clone, Copy, PartialEq, Debug)]
+    #[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
     struct TestComponent1 {
         value: i32,
     }
 
-    #[derive(Component, Clone, Copy, PartialEq, Debug)]
+    #[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
     struct TestComponent2 {
         value: f64,
     }
@@ -185,5 +185,39 @@ mod tests {
 
         assert_eq!(*actual1, expected1);
         assert_eq!(*actual2, expected2);
+    }
+
+    #[test]
+    fn remove_components_archetype_will_not_contain_erased_types() {
+        let mut store = Store::new();
+        let entity = store.create_entity();
+
+        store.add_components(
+            entity,
+            (TestComponent1::default(), TestComponent2::default()),
+        );
+        store.remove_components::<TestComponent2>(entity);
+
+        let arch = store.get_entity_archetype(entity).unwrap();
+
+        assert!(arch.is_exclude_ids(&type_ids!(TestComponent2)));
+        assert!(arch.is_include_ids(&type_ids!(TestComponent1)));
+    }
+
+    #[test]
+    fn remove_components_archetype_values_as_expected() {
+        let mut store = Store::new();
+        let entity = store.create_entity();
+        let expected_comp = TestComponent2::new(33);
+
+        store.add_components(
+            entity,
+            (TestComponent1::default(), expected_comp),
+        );
+        store.remove_components::<TestComponent1>(entity);
+
+        let comp2 = store.get_components_refs::<TestComponent2>(entity).unwrap();
+
+        assert_eq!(*comp2, expected_comp);
     }
 }

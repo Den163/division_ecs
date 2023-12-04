@@ -113,7 +113,7 @@ impl ArchetypeDataPage {
 
             let dst_type_index = arch_union.rhs_indices[i];
             let dst_offset = *dst_archetype.component_offsets().add(dst_type_index);
-            let dst_size = *dst_archetype.component_offsets().add(dst_type_index);
+            let dst_size = *dst_archetype.component_sizes().add(dst_type_index);
 
             let src_ptr =
                 src.get_component_data_ptr(src_entity_index, src_offset, src_size);

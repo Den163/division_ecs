@@ -6,6 +6,10 @@ pub trait ArchetypeBuilerTupleExtension: ComponentsTuple {
     fn add_components_to_archetype_builder(
         builder: &mut ArchetypeBuilder,
     ) -> &mut ArchetypeBuilder;
+
+    fn remove_components_from_archetype_builder(
+        builder: &mut ArchetypeBuilder,
+    ) -> &mut ArchetypeBuilder;
 }
 
 pub struct ArchetypeBuilder {
@@ -23,17 +27,25 @@ impl ArchetypeBuilder {
         T::add_components_to_archetype_builder(self)
     }
 
+    pub fn exclude_components<T: ArchetypeBuilerTupleExtension>(&mut self) -> &mut Self {
+        T::remove_components_from_archetype_builder(self)
+    }
+
     pub fn include_component_types(&mut self, components: &[ComponentType]) -> &mut Self {
         for comp in components {
-            self.include_component_type(*comp);
+            if !self.component_types.contains(comp) {
+                self.component_types.push(*comp);
+            }
         }
 
         self
     }
 
-    pub fn include_component_type(&mut self, component: ComponentType) -> &mut Self {
-        if !self.component_types.contains(&component) {
-            self.component_types.push(component);
+    pub fn exclude_component_types(&mut self, components: &[ComponentType]) -> &mut Self {
+        for comp in components {
+            if let Some(idx) = self.component_types.iter().position(|c| c == comp) {
+                self.component_types.remove(idx);
+            }
         }
 
         self
@@ -69,6 +81,12 @@ macro_rules! archetype_builder_tuple_impl {
                 let components = & $crate::component_types!( $($T),* );
                 builder.include_component_types(components)
             }
+
+            fn remove_components_from_archetype_builder(builder: &mut $crate::ArchetypeBuilder) -> &mut $crate::ArchetypeBuilder {
+                let components = & $crate::component_types!( $($T),* );
+                builder.exclude_component_types(components)
+            }
+
         }
     };
 }
