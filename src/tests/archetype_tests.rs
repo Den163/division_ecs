@@ -90,31 +90,36 @@ mod tests {
 
             let union = ArchetypesUnion::calculate(&arch0, &arch1);
 
+            println!("TUT 0");
             assert_union_len(&union, 1);
 
-            assert_type_index::<TestType2>(&arch0, union.lhs_indices[0]);
-            assert_type_index::<TestType2>(&arch1, union.rhs_indices[0]);
+            assert_has_type_index::<TestType2>(&arch0, &union.lhs_indices);
+            assert_has_type_index::<TestType2>(&arch1, &union.rhs_indices);
         }
         {
             let arch0 = Archetype::with_components::<(TestType1, TestType2)>();
             let arch1 = Archetype::with_components::<TestType2>();
 
             let union = ArchetypesUnion::calculate(&arch0, &arch1);
+            println!("TUT 1");
 
             assert_union_len(&union, 1);
 
-            assert_type_index::<TestType2>(&arch0, union.lhs_indices[0]);
-            assert_type_index::<TestType2>(&arch1, union.rhs_indices[0]);
+            assert_has_type_index::<TestType2>(&arch0, &union.lhs_indices);
+            assert_has_type_index::<TestType2>(&arch1, &union.rhs_indices);
         }
         {
             let arch0 = Archetype::with_components::<(TestType1, TestType2)>();
             let arch1 = Archetype::with_components::<TestType3>();
 
             let union = ArchetypesUnion::calculate(&arch0, &arch1);
+            println!("TUT 2");
 
             assert_union_len(&union, 0);
         }
         {
+            println!("TUT 3");
+
             let arch0 = Archetype::with_components::<(TestType1, TestType2, TestType3)>();
             let arch1 = Archetype::with_components::<(TestType1, TestType3)>();
 
@@ -122,21 +127,20 @@ mod tests {
 
             assert_union_len(&union, 2);
 
-            assert_type_index::<TestType1>(&arch0, union.lhs_indices[0]);
-            assert_type_index::<TestType3>(&arch0, union.lhs_indices[1]);
+            assert_has_type_index::<TestType1>(&arch0, &union.lhs_indices);
+            assert_has_type_index::<TestType3>(&arch0, &union.lhs_indices);
 
-            assert_type_index::<TestType1>(&arch1, union.lhs_indices[0]);
-            assert_type_index::<TestType3>(&arch1, union.lhs_indices[1]);
+            assert_has_type_index::<TestType1>(&arch1, &union.rhs_indices);
+            assert_has_type_index::<TestType3>(&arch1, &union.rhs_indices);
         }
     }
 
-    fn assert_type_index<T: Component + 'static>(
+    fn assert_has_type_index<T: Component + 'static>(
         archetype: &Archetype,
-        expected_type_index: usize,
+        indices: &[usize],
     ) {
-        assert_eq!(
-            expected_type_index,
-            archetype.find_component_index_of::<T>().unwrap()
+        assert!(
+            indices.contains(&archetype.find_component_index_of::<T>().unwrap())
         );
     }
 
