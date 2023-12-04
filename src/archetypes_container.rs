@@ -54,38 +54,13 @@ impl ArchetypesContainer {
         }
     }
 
-    pub fn add_entity_with_archetype(
+    pub fn add_entity(
         &mut self,
         entity_id: u32,
         archetype: &Archetype,
     ) -> EntityInArchetype {
         let archetype_index = self.reserve_archetype(archetype);
-        let pages = &mut self.archetype_to_pages[archetype_index].pages;
-
-        // Looking in reverse direction, because there is more probability, that
-        // page with free slots will be located in the end
-        for page_index in pages.into_iter().rev() {
-            let page_index = *page_index;
-            let page = &mut self.pages[page_index];
-            let page_index = page_index as u32;
-            if page.has_free_space() {
-                let index_in_page = page.add_entity_id(entity_id) as u32;
-
-                return EntityInArchetype {
-                    page_index,
-                    index_in_page,
-                };
-            }
-        }
-
-        let page_index = self.reserve_page_for_archetype(archetype_index);
-        let index_in_page = self.pages[page_index].add_entity_id(entity_id) as u32;
-        let page_index = page_index as u32;
-
-        EntityInArchetype {
-            page_index,
-            index_in_page,
-        }
+        self.reserve_page(entity_id, archetype_index)
     }
 
     pub fn swap_remove_entity(
@@ -109,6 +84,34 @@ impl ArchetypesContainer {
         }
 
         swap_remove
+    }
+
+    pub fn move_entity_to_other_archetype(
+        &mut self,
+        entity_id: u32,
+        previous_entity_in_archetype: EntityInArchetype,
+        previous_archetype_index: usize,
+        new_archetype: &Archetype,
+    ) -> EntityInArchetype {
+        let new_archetype_index = self.reserve_archetype(new_archetype);
+        let new_entity_in_arch = self.reserve_page(entity_id, new_archetype_index);
+
+        let prev_page = &self.pages[previous_entity_in_archetype.page_index as usize];
+        let new_page = &self.pages[new_entity_in_arch.page_index as usize];
+        let prev_archetype = &self.archetypes[previous_archetype_index];
+
+        unsafe {
+            ArchetypeDataPage::copy_component_data_to_page_with_new_archetype(
+                prev_page,
+                new_page,
+                previous_entity_in_archetype.index_in_page as usize,
+                new_entity_in_arch.index_in_page as usize,
+                prev_archetype,
+                new_archetype,
+            );
+        }
+
+        new_entity_in_arch
     }
 
     #[inline(always)]
@@ -193,7 +196,29 @@ impl ArchetypesContainer {
         }
     }
 
-    fn reserve_page_for_archetype(&mut self, archetype_index: usize) -> usize {
+    fn reserve_page(
+        &mut self,
+        entity_id: u32,
+        archetype_index: usize,
+    ) -> EntityInArchetype {
+        let pages = &mut self.archetype_to_pages[archetype_index].pages;
+
+        // Looking in reverse direction, because there is more probability, that
+        // page with free slots will be located in the end
+        for page_index in pages.into_iter().rev() {
+            let page_index = *page_index;
+            let page = &mut self.pages[page_index];
+            let page_index = page_index as u32;
+            if page.has_free_space() {
+                let index_in_page = page.add_entity_id(entity_id) as u32;
+
+                return EntityInArchetype {
+                    page_index,
+                    index_in_page,
+                };
+            }
+        }
+
         let page_index = match self.free_pages.pop() {
             Some(page_index) => page_index,
             None => {
@@ -212,6 +237,12 @@ impl ArchetypesContainer {
             .push(page_index);
         self.page_to_archetype[page_index] = archetype_index;
 
-        page_index
+        let index_in_page = self.pages[page_index].add_entity_id(entity_id) as u32;
+        let page_index = page_index as u32;
+
+        EntityInArchetype {
+            page_index,
+            index_in_page,
+        }
     }
 }

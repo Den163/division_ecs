@@ -18,6 +18,11 @@ pub struct Archetype {
     entities_capacity: usize,
 }
 
+pub struct ArchetypesUnion {
+    pub lhs_indices: Vec<usize>,
+    pub rhs_indices: Vec<usize>,
+}
+
 pub trait ComponentTupleToArchetype: ComponentsTuple {
     fn into_archetype() -> Archetype;
 }
@@ -150,11 +155,6 @@ impl Archetype {
         self.entities_capacity
     }
 
-    #[inline(always)]
-    pub fn is_empty(&self) -> bool {
-        self.component_count == 0
-    }
-
     #[inline]
     pub(crate) unsafe fn component_sizes(&self) -> *const usize {
         self.sizes
@@ -168,10 +168,6 @@ impl Archetype {
     pub fn is_same_as(&self, other: &Self) -> bool {
         if self.component_count != other.component_count {
             return false;
-        }
-
-        if self.is_empty() {
-            return true;
         }
 
         let ids = unsafe { std::slice::from_raw_parts(self.ids, self.component_count) };
@@ -190,6 +186,23 @@ impl Archetype {
         let self_ids = self.included_ids();
 
         if self_ids.len() < ids_to_check.len() {
+            return false;
+        }
+
+        for id in ids_to_check {
+            let result = self_ids.binary_search(id);
+            if result.is_err() {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    pub fn is_include_only_ids(&self, ids_to_check: &[TypeId]) -> bool {
+        let self_ids = self.included_ids();
+
+        if self_ids.len() != ids_to_check.len() {
             return false;
         }
 
@@ -235,6 +248,54 @@ impl Archetype {
     }
 }
 
+impl ArchetypesUnion {
+    pub fn calculate(lhs: &Archetype, rhs: &Archetype) -> Self {
+        let mut lhs_indices = Vec::new();
+        let mut rhs_indices = Vec::new();
+
+        let (outer, inner, outer_indices, inner_indices) =
+            if lhs.component_count > rhs.component_count {
+                (lhs, rhs, &mut lhs_indices, &mut rhs_indices)
+            } else {
+                (rhs, lhs, &mut rhs_indices, &mut lhs_indices)
+            };
+
+        let mut o = 0;
+
+        while o < outer.component_count {
+            let outer_type_id = unsafe { *outer.ids.add(o) };
+
+            let mut i = 0;
+            while i < inner.component_count {
+                let inner_type_id = unsafe { *inner.ids.add(i) };
+
+                if inner_type_id > outer_type_id {
+                    break;
+                }
+
+                if inner_type_id == outer_type_id {
+                    inner_indices.push(i);
+                    outer_indices.push(o);
+                }
+
+                i += 1;
+            }
+
+            o += 1;
+        }
+
+        ArchetypesUnion {
+            lhs_indices,
+            rhs_indices,
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.lhs_indices.len()
+    }
+}
+
 impl Clone for Archetype {
     fn clone(&self) -> Self {
         let component_count = self.component_count;
@@ -251,7 +312,8 @@ impl Clone for Archetype {
             self.ids.copy_to_nonoverlapping(ids, component_count);
             self.sizes.copy_to_nonoverlapping(sizes, component_count);
             self.aligns.copy_to_nonoverlapping(aligns, component_count);
-            self.offsets.copy_to_nonoverlapping(offsets, component_count);
+            self.offsets
+                .copy_to_nonoverlapping(offsets, component_count);
         }
 
         Self {

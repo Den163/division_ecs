@@ -1,4 +1,4 @@
-use crate::{mem_utils, Archetype};
+use crate::{archetype::ArchetypesUnion, mem_utils, Archetype};
 
 /// Reusable page of the components data with a fixed size (4096 Bytes), related to the concrete archetype.
 /// It contains data for all components of the some entities subset
@@ -86,12 +86,41 @@ impl ArchetypeDataPage {
         let offsets = archetype.component_offsets();
 
         for i in 0..archetype.component_count() {
-            let s = *sizes.add(i);
-            let o = *offsets.add(i);
+            let size = *sizes.add(i);
+            let offset = *offsets.add(i);
 
-            let src_comp = self.get_component_data_ptr(src_entity_index, o, s);
-            let dst_comp = self.get_component_data_ptr_mut(dst_entity_index, o, s);
-            src_comp.copy_to_nonoverlapping(dst_comp, s);
+            let src_comp = self.get_component_data_ptr(src_entity_index, offset, size);
+            let dst_comp = self.get_component_data_ptr_mut(dst_entity_index, offset, size);
+            src_comp.copy_to_nonoverlapping(dst_comp, size);
+        }
+    }
+
+    #[inline]
+    pub unsafe fn copy_component_data_to_page_with_new_archetype(
+        src: &Self,
+        dst: &Self,
+        src_entity_index: usize,
+        dst_entity_index: usize,
+        src_archetype: &Archetype,
+        dst_archetype: &Archetype,
+    ) {
+        let arch_union = ArchetypesUnion::calculate(src_archetype, dst_archetype);
+
+        for i in 0..arch_union.len() {
+            let src_type_index = arch_union.lhs_indices[i];
+            let src_offset = *src_archetype.component_offsets().add(src_type_index);
+            let src_size = *src_archetype.component_sizes().add(src_type_index);
+
+            let dst_type_index = arch_union.rhs_indices[i];
+            let dst_offset = *dst_archetype.component_offsets().add(dst_type_index);
+            let dst_size = *dst_archetype.component_offsets().add(dst_type_index);
+
+            let src_ptr =
+                src.get_component_data_ptr(src_entity_index, src_offset, src_size);
+            let dst_ptr =
+                dst.get_component_data_ptr_mut(dst_entity_index, dst_offset, dst_size);
+
+            src_ptr.copy_to_nonoverlapping(dst_ptr, dst_size);
         }
     }
 

@@ -24,6 +24,8 @@ pub trait ComponentsTuple {
         entity_index: usize,
         offsets: &Self::OffsetsTuple,
     ) -> Self::MutRefsTuple<'a>;
+
+    fn assign_to_refs<'a>(refs: Self::MutRefsTuple<'a>, values: Self);
 }
 
 macro_rules! components_tuple_impl {
@@ -100,6 +102,18 @@ macro_rules! components_tuple_impl {
                         )
                     ),*
                 )}
+            }
+
+            #[inline(always)]
+            fn assign_to_refs<'a>(
+                ($( paste!([<$T:lower>]) ),*): <($($T),*) as ComponentsTuple>::MutRefsTuple<'a>,
+                ($( paste!([<v_$T:lower>]) ),*): Self 
+            ) {
+                (
+                    $(
+                        *paste!{ [<$T:lower>] } = paste!{ [<v_$T:lower>] }
+                    ),*
+                );
             }
         }
 

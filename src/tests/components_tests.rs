@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use crate::{Archetype, Component, Store};
+    use crate::{type_ids, Archetype, Component, Store};
     use std::mem::MaybeUninit;
 
     impl Component for f32 {}
     impl Component for u64 {}
     impl Component for u128 {}
 
-    #[derive(Component, Clone, Copy)]
+    #[derive(Component, Clone, Copy, PartialEq, Debug)]
     struct TestComponent1 {
         value: i32,
     }
 
-    #[derive(Component, Clone, Copy)]
+    #[derive(Component, Clone, Copy, PartialEq, Debug)]
     struct TestComponent2 {
         value: f64,
     }
@@ -122,5 +122,68 @@ mod tests {
 
         assert_eq!(actual1.value, expected1.value);
         assert_eq!(actual2.value, expected2.value);
+    }
+
+    #[test]
+    fn add_components_to_empty_archetype_changes_it_respectively() {
+        let mut store = Store::new();
+        let e = store.create_entity();
+
+        store.add_components(
+            e,
+            (TestComponent1 { value: 0 }, TestComponent2 { value: 0. }),
+        );
+
+        let arch = store.get_entity_archetype(e).unwrap();
+
+        assert!(arch.is_include_only_ids(&type_ids!(TestComponent1, TestComponent2)));
+    }
+
+    #[test]
+    fn add_components_values_as_expected() {
+        let mut store = Store::new();
+        let e = store.create_entity();
+
+        let expected1 = TestComponent1 { value: 364 };
+        let expected2 = TestComponent2 { value: 31. };
+
+        store.add_components(e, (expected1, expected2));
+
+        let (actual1, actual2) = store
+            .get_components_refs::<(TestComponent1, TestComponent2)>(e)
+            .unwrap();
+
+        assert_eq!(*actual1, expected1);
+        assert_eq!(*actual2, expected2);
+    }
+
+    #[test]
+    fn add_components_values_work_with_different_archetypes() {
+        let mut store = Store::new();
+        let e1 = store.create_entity();
+
+        let expected1 = TestComponent1 { value: 364 };
+        store.add_components(e1, expected1);
+
+        let e2 = store.create_entity();
+
+        let expected2 = TestComponent2 { value: 31. };
+        store.add_components(e2, expected2);
+
+        let actual1 = store.get_components_refs::<TestComponent1>(e1).unwrap();
+        let actual2 = store.get_components_refs::<TestComponent2>(e2).unwrap();
+
+        assert!(store
+            .get_entity_archetype(e1)
+            .unwrap()
+            .is_include_only_ids(&type_ids!(TestComponent1)),);
+
+        assert!(store
+            .get_entity_archetype(e2)
+            .unwrap()
+            .is_include_only_ids(&type_ids!(TestComponent2)));
+
+        assert_eq!(*actual1, expected1);
+        assert_eq!(*actual2, expected2);
     }
 }
