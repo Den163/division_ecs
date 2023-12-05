@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::{
     archetype_data_page::ArchetypeDataPage,
     query::access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
-    tuple::ComponentsTuple,
+    component_tuple::ComponentTuple,
     Entity, Store,
 };
 
@@ -44,15 +44,15 @@ impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
     }
 }
 
-pub fn readonly<R: ComponentsTuple>() -> EntityComponentReadOnlyQuery<R> {
+pub fn readonly<R: ComponentTuple>() -> EntityComponentReadOnlyQuery<R> {
     EntityComponentQuery::new()
 }
 
-pub fn write<W: ComponentsTuple>() -> EntityComponentWriteQuery<W> {
+pub fn write<W: ComponentTuple>() -> EntityComponentWriteQuery<W> {
     EntityComponentQuery::new()
 }
 
-pub fn read_write<R: ComponentsTuple, W: ComponentsTuple>(
+pub fn read_write<R: ComponentTuple, W: ComponentTuple>(
 ) -> EntityComponentReadWriteQuery<R, W> {
     EntityComponentQuery::new()
 }

@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     archetype_data_page::ArchetypeDataPage, component_type::ComponentType, mem_utils,
-    tuple::ComponentsTuple,
+    component_tuple::ComponentTuple,
 };
 
 #[derive(Debug)]
@@ -23,12 +23,8 @@ pub struct ArchetypesUnion {
     pub rhs_indices: Vec<usize>,
 }
 
-pub trait ComponentTupleToArchetype: ComponentsTuple {
-    fn into_archetype() -> Archetype;
-}
-
 impl Archetype {
-    pub fn with_components<T: ComponentTupleToArchetype>() -> Self {
+    pub fn with_components<T: ComponentTuple>() -> Self {
         T::into_archetype()
     }
 
@@ -347,19 +343,3 @@ impl Drop for Archetype {
         }
     }
 }
-
-macro_rules! tuple_into_archetype_impl {
-    ($($T: tt),*) => {
-        #[allow(unused_parens)]
-        impl<$($T: 'static + Component),*> $crate::archetype::ComponentTupleToArchetype for ($($T),*) {
-            fn into_archetype() -> $crate::Archetype
-            {
-                let components = &mut $crate::component_types!( $($T),* );
-                components.sort_by_key(|a| a.id());
-                $crate::Archetype::new(components)
-            }
-        }
-    };
-}
-
-pub(crate) use tuple_into_archetype_impl;

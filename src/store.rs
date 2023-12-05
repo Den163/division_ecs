@@ -1,6 +1,5 @@
 use crate::{
-    archetype::{Archetype, ComponentTupleToArchetype},
-    archetype_builder::ArchetypeBuilerTupleExtension,
+    archetype::Archetype,
     archetype_data_page::ArchetypeDataPage,
     archetype_data_page_view::ArchetypeDataPageView,
     archetypes_container::ArchetypesContainer,
@@ -8,7 +7,7 @@ use crate::{
     entities_container::EntitiesContainer,
     entity_in_archetype::EntityInArchetype,
     mem_utils,
-    tuple::ComponentsTuple,
+    component_tuple::ComponentTuple,
     ArchetypeBuilder, Entity,
 };
 
@@ -95,13 +94,7 @@ impl Store {
         self.entities_container.destroy_entity(entity)
     }
 
-    pub fn add_components<
-        T: ArchetypeBuilerTupleExtension + ComponentTupleToArchetype,
-    >(
-        &mut self,
-        entity: Entity,
-        components: T,
-    ) {
+    pub fn add_components<T: ComponentTuple>(&mut self, entity: Entity, components: T) {
         if self.is_alive(entity) == false {
             return;
         }
@@ -134,10 +127,7 @@ impl Store {
 
             unsafe {
                 self.set_page_index_unchecked(entity.id, entity_in_arch.page_index);
-                self.set_index_in_page_unchecked(
-                    entity.id,
-                    entity_in_arch.index_in_page,
-                );
+                self.set_index_in_page_unchecked(entity.id, entity_in_arch.index_in_page);
                 self.enable_archetype_unchecked(entity.id);
             }
             entity_in_arch
@@ -155,10 +145,7 @@ impl Store {
         };
     }
 
-    pub fn remove_components<T: ArchetypeBuilerTupleExtension + 'static>(
-        &mut self,
-        entity: Entity,
-    ) {
+    pub fn remove_components<T: ComponentTuple + 'static>(&mut self, entity: Entity) {
         if !self.is_valid_entity_with_archetype(entity) {
             return;
         }
@@ -228,10 +215,10 @@ impl Store {
     }
 
     #[inline(always)]
-    pub fn get_components_refs<'a, T: ComponentsTuple>(
+    pub fn get_components_refs<'a, T: ComponentTuple>(
         &'a self,
         entity: Entity,
-    ) -> Option<T::RefsTuple<'a>> {
+    ) -> Option<T::RefTuple<'a>> {
         if self.is_valid_entity_with_archetype(entity) {
             let (page_view, index_in_page) = unsafe { self.get_page_info(entity.id) };
             page_view.get_components_refs::<T>(index_in_page)
@@ -241,10 +228,10 @@ impl Store {
     }
 
     #[inline(always)]
-    pub fn get_components_refs_mut<'a, T: ComponentsTuple>(
+    pub fn get_components_refs_mut<'a, T: ComponentTuple>(
         &'a mut self,
         entity: Entity,
-    ) -> Option<T::MutRefsTuple<'a>> {
+    ) -> Option<T::MutRefTuple<'a>> {
         if self.is_valid_entity_with_archetype(entity) {
             let (page_view, index_in_page) = unsafe { self.get_page_info(entity.id) };
             page_view.get_components_refs_mut::<T>(index_in_page)

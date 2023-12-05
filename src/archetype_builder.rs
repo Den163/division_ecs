@@ -1,16 +1,6 @@
 use crate::{
-    archetype::Archetype, component_type::ComponentType, tuple::ComponentsTuple,
+    archetype::Archetype, component_type::ComponentType, component_tuple::ComponentTuple,
 };
-
-pub trait ArchetypeBuilerTupleExtension: ComponentsTuple {
-    fn add_components_to_archetype_builder(
-        builder: &mut ArchetypeBuilder,
-    ) -> &mut ArchetypeBuilder;
-
-    fn remove_components_from_archetype_builder(
-        builder: &mut ArchetypeBuilder,
-    ) -> &mut ArchetypeBuilder;
-}
 
 pub struct ArchetypeBuilder {
     component_types: Vec<ComponentType>,
@@ -23,11 +13,11 @@ impl ArchetypeBuilder {
         }
     }
 
-    pub fn include_components<T: ArchetypeBuilerTupleExtension>(&mut self) -> &mut Self {
+    pub fn include_components<T: ComponentTuple>(&mut self) -> &mut Self {
         T::add_components_to_archetype_builder(self)
     }
 
-    pub fn exclude_components<T: ArchetypeBuilerTupleExtension>(&mut self) -> &mut Self {
+    pub fn exclude_components<T: ComponentTuple>(&mut self) -> &mut Self {
         T::remove_components_from_archetype_builder(self)
     }
 
@@ -70,25 +60,3 @@ impl ArchetypeBuilder {
         Archetype::new(&mut self.component_types)
     }
 }
-
-macro_rules! archetype_builder_tuple_impl {
-    ($($T: tt),*) => {
-        #[allow(unused_parens)]
-        impl<$($T: 'static + Component),*> $crate::archetype_builder::ArchetypeBuilerTupleExtension for ($($T),*) {
-            fn add_components_to_archetype_builder(
-                builder: &mut $crate::ArchetypeBuilder) -> &mut $crate::ArchetypeBuilder
-            {
-                let components = & $crate::component_types!( $($T),* );
-                builder.include_component_types(components)
-            }
-
-            fn remove_components_from_archetype_builder(builder: &mut $crate::ArchetypeBuilder) -> &mut $crate::ArchetypeBuilder {
-                let components = & $crate::component_types!( $($T),* );
-                builder.exclude_component_types(components)
-            }
-
-        }
-    };
-}
-
-pub(crate) use archetype_builder_tuple_impl;

@@ -15,13 +15,10 @@ mod mem_utils;
 mod resource_store;
 mod store;
 mod tests;
-mod tuple;
+mod component_tuple;
 
 pub mod macros;
 pub mod query;
-
-pub(crate) use archetype::tuple_into_archetype_impl;
-pub(crate) use archetype_builder::archetype_builder_tuple_impl;
 
 pub use archetype::Archetype;
 pub use archetype_builder::ArchetypeBuilder;

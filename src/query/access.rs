@@ -1,16 +1,16 @@
 use std::marker::PhantomData;
 
-use crate::{archetype_data_page::ArchetypeDataPage, tuple::ComponentsTuple, Archetype};
+use crate::{archetype_data_page::ArchetypeDataPage, component_tuple::ComponentTuple, Archetype};
 
-pub struct ReadonlyAccess<TRead: ComponentsTuple> {
+pub struct ReadonlyAccess<TRead: ComponentTuple> {
     _read: PhantomData<TRead>,
 }
 
-pub struct WriteAccess<TWrite: ComponentsTuple> {
+pub struct WriteAccess<TWrite: ComponentTuple> {
     _write: PhantomData<TWrite>,
 }
 
-pub struct ReadWriteAccess<TRead: ComponentsTuple, TWrite: ComponentsTuple> {
+pub struct ReadWriteAccess<TRead: ComponentTuple, TWrite: ComponentTuple> {
     _read: PhantomData<TRead>,
     _write: PhantomData<TWrite>,
 }
@@ -32,11 +32,11 @@ pub trait ComponentQueryAccess {
 
 impl<TRead, TWrite> ComponentQueryAccess for ReadWriteAccess<TRead, TWrite>
 where
-    TRead: ComponentsTuple,
-    TWrite: ComponentsTuple,
+    TRead: ComponentTuple,
+    TWrite: ComponentTuple,
 {
-    type OffsetsTuple = (TRead::OffsetsTuple, TWrite::OffsetsTuple);
-    type AccessOutput<'a> = (TRead::RefsTuple<'a>, TWrite::MutRefsTuple<'a>);
+    type OffsetsTuple = (TRead::OffsetTuple, TWrite::OffsetTuple);
+    type AccessOutput<'a> = (TRead::RefTuple<'a>, TWrite::MutRefTuple<'a>);
 
     fn get_offsets(archetype: &Archetype) -> Self::OffsetsTuple {
         (
@@ -62,9 +62,9 @@ where
     }
 }
 
-impl<TRead: ComponentsTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
-    type OffsetsTuple = TRead::OffsetsTuple;
-    type AccessOutput<'a> = TRead::RefsTuple<'a>;
+impl<TRead: ComponentTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
+    type OffsetsTuple = TRead::OffsetTuple;
+    type AccessOutput<'a> = TRead::RefTuple<'a>;
 
     fn is_archetype_include_types(archetype: &Archetype) -> bool {
         TRead::is_archetype_include_types(archetype)
@@ -83,9 +83,9 @@ impl<TRead: ComponentsTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
     }
 }
 
-impl<TWrite: ComponentsTuple> ComponentQueryAccess for WriteAccess<TWrite> {
-    type OffsetsTuple = TWrite::OffsetsTuple;
-    type AccessOutput<'a> = TWrite::MutRefsTuple<'a>;
+impl<TWrite: ComponentTuple> ComponentQueryAccess for WriteAccess<TWrite> {
+    type OffsetsTuple = TWrite::OffsetTuple;
+    type AccessOutput<'a> = TWrite::MutRefTuple<'a>;
 
     fn is_archetype_include_types(archetype: &Archetype) -> bool {
         TWrite::is_archetype_include_types(archetype)
