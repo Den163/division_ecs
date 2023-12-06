@@ -56,7 +56,11 @@ mod test {
 
         let mut query = ComponentReadOnlyQuery::<(Position, Rotation)>::new();
         let mut iter_count = 0;
-        for (e, (pos, rot)) in store.component_query_iter(&mut query).with_entities() {
+
+        let query_iter = store.component_query_iter(&mut query);
+
+        assert_eq!(query_iter.len(), expected_data.len());
+        for (e, (pos, rot)) in query_iter.with_entities() {
             iter_count += 1;
 
             let e_idx = entities.iter().position(|e_check| *e_check == e).unwrap();
@@ -92,7 +96,11 @@ mod test {
 
         let mut iterated_entities = Vec::new();
         let query = &mut ComponentReadOnlyQuery::<usize>::new();
-        for (e, v) in store.component_query_iter(query).with_entities()
+        let query_iter = store.component_query_iter(query);
+
+        assert_eq!(query_iter.len(), expected_to_iterate.len());
+
+        for (e, v) in query_iter.with_entities()
         {
             iterated_entities.push(e);
 

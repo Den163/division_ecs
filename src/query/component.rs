@@ -26,6 +26,7 @@ pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
 
     current_page_view_index: usize,
     next_entity_id: usize,
+    entities_count: usize
 }
 
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
@@ -68,6 +69,7 @@ impl Store {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
         let pages = arch_container.get_pages();
+        let mut entities_count = 0;
 
         query.page_views.clear();
         query.components_offsets.clear();
@@ -84,7 +86,8 @@ impl Store {
 
             for page_idx in arch_pages {
                 let page = &pages[*page_idx];
-                if page.entities_count() == 0 {
+                let page_entities_count = page.entities_count();
+                if page_entities_count == 0 {
                     continue;
                 }
 
@@ -92,6 +95,7 @@ impl Store {
                     page,
                     components_offsets_index,
                 });
+                entities_count += page_entities_count;
             }
         }
 
@@ -102,6 +106,7 @@ impl Store {
             page_views: &query.page_views,
             store: self,
             curr_page_ptr: null(),
+            entities_count
         }
     }
 }
@@ -147,6 +152,12 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
 
             return Some(T::get_refs(curr_page, curr_entity_idx, offsets));
         }
+    }
+}
+
+impl<'a, T: ComponentQueryAccess> ExactSizeIterator for ComponentsQueryIter<'a, T> {
+    fn len(&self) -> usize {
+        self.entities_count
     }
 }
 
