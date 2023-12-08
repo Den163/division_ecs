@@ -144,11 +144,6 @@ impl ArchetypesContainer {
     }
 
     #[inline]
-    pub fn get_layouts(&self) -> &[ArchetypeLayout] {
-        &self.layouts
-    }
-
-    #[inline]
     pub unsafe fn get_archetype_with_layout_unchecked(
         &self,
         archetype_index: usize,

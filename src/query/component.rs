@@ -1,5 +1,3 @@
-use std::ptr::null;
-
 use crate::{
     archetype_data_page::ArchetypeDataPage,
     component_tuple::ComponentTuple,
@@ -7,24 +5,23 @@ use crate::{
     Entity, Store,
 };
 
+use super::component_page_iter::ComponentPageIter;
+
 pub type ComponentReadWriteQuery<R, W> = ComponentQuery<ReadWriteAccess<R, W>>;
 pub type ComponentReadOnlyQuery<R> = ComponentQuery<ReadonlyAccess<R>>;
 pub type ComponentWriteQuery<W> = ComponentQuery<WriteAccess<W>>;
 
 pub struct ComponentQuery<T: ComponentQueryAccess> {
-    page_views: Vec<PageIterView>,
-    components_offsets: Vec<T::OffsetsTuple>,
+    page_views: Vec<PageIterView<T>>,
 }
 
 pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
     store: &'a Store,
-    page_views: &'a [PageIterView],
-    components_offsets: &'a [T::OffsetsTuple],
-    curr_page_ptr: *const ArchetypeDataPage,
+    page_views: &'a [PageIterView<T>],
+    current_page_iter: ComponentPageIter<'a, T>,
 
-    current_page_view_index: usize,
-    next_entity_id: usize,
-    entities_count: usize,
+    current_page_index: usize,
+    queried_entities_count: usize,
 }
 
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
@@ -32,9 +29,9 @@ pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
     entities_versions: *const u32,
 }
 
-pub(crate) struct PageIterView {
+pub(crate) struct PageIterView<T: ComponentQueryAccess> {
     page: *const ArchetypeDataPage,
-    components_offsets_index: usize,
+    component_offsets: T::OffsetsTuple,
 }
 
 pub fn readonly<R: ComponentTuple>() -> ComponentQuery<ReadonlyAccess<R>> {
@@ -54,7 +51,6 @@ impl<T: ComponentQueryAccess> ComponentQuery<T> {
     pub fn new() -> Self {
         ComponentQuery {
             page_views: Vec::new(),
-            components_offsets: Vec::new(),
         }
     }
 }
@@ -65,29 +61,23 @@ impl Store {
         query: &'b mut ComponentQuery<T>,
     ) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
-        let archetypes = arch_container.get_archetypes();
-        let layouts = arch_container.get_layouts();
         let pages = arch_container.get_pages();
-        let mut entities_count = 0;
+        let mut queried_entities_count = 0;
 
         query.page_views.clear();
-        query.components_offsets.clear();
 
-        for arch_idx in 0..archetypes.len() {
+        for arch_idx in 0..arch_container.get_archetypes().len() {
             let (arch, layout) = unsafe {
-                (
-                    archetypes.get_unchecked(arch_idx),
-                    layouts.get_unchecked(arch_idx),
-                )
+                self.archetypes_container
+                    .get_archetype_with_layout_unchecked(arch_idx)
             };
 
             if T::is_archetype_include_types(arch) == false {
                 continue;
             }
 
-            query.components_offsets.push(T::get_offsets(arch, layout));
+            let component_offsets = T::get_offsets(arch, layout);
 
-            let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
 
             for page_idx in arch_pages {
@@ -99,20 +89,28 @@ impl Store {
 
                 query.page_views.push(PageIterView {
                     page,
-                    components_offsets_index,
+                    component_offsets,
                 });
-                entities_count += page_entities_count;
+                queried_entities_count += page_entities_count;
             }
         }
 
+        let page_iter = if query.page_views.len() > 0 {
+            let first_page = &query.page_views[0];
+
+            unsafe {
+                ComponentPageIter::new(first_page.page, first_page.component_offsets)
+            }
+        } else {
+            ComponentPageIter::empty()
+        };
+
         ComponentsQueryIter {
-            current_page_view_index: 0,
-            next_entity_id: 0,
-            components_offsets: &query.components_offsets,
+            current_page_iter: page_iter,
+            store: &self,
             page_views: &query.page_views,
-            store: self,
-            curr_page_ptr: null(),
-            entities_count,
+            current_page_index: 0,
+            queried_entities_count,
         }
     }
 }
@@ -121,49 +119,36 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
     type Item = T::AccessOutput<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let page_views = self.page_views;
-        let page_view_count = self.page_views.len();
-
-        if self.current_page_view_index >= page_view_count {
+        if self.current_page_index >= self.page_views.len() {
             return None;
         }
 
-        let mut curr_page_view =
-            unsafe { page_views.get_unchecked(self.current_page_view_index) };
-        let mut curr_page = unsafe { &*curr_page_view.page };
-        let entities_ids = curr_page.entities_ids();
+        let current_iter = &mut self.current_page_iter;
 
-        if self.next_entity_id >= entities_ids.len() {
-            self.current_page_view_index += 1;
-            self.next_entity_id = 0;
+        if let Some(val) = current_iter.next() {
+            return Some(val);
+        } else {
+            self.current_page_index += 1;
+            if self.current_page_index < self.page_views.len() {
+                let page_view =
+                    unsafe { self.page_views.get_unchecked(self.current_page_index) };
 
-            if self.current_page_view_index >= page_view_count {
+                self.current_page_iter = unsafe {
+                    ComponentPageIter::new(page_view.page, page_view.component_offsets)
+                };
+
+                return self.current_page_iter.next();
+            } else {
+                self.current_page_iter = ComponentPageIter::empty();
                 return None;
             }
-
-            curr_page_view =
-                unsafe { page_views.get_unchecked(self.current_page_view_index) };
-            curr_page = unsafe { &*curr_page_view.page };
-        }
-
-        self.curr_page_ptr = curr_page_view.page;
-
-        unsafe {
-            let curr_entity_idx = self.next_entity_id;
-            let offsets = self
-                .components_offsets
-                .get_unchecked(curr_page_view.components_offsets_index);
-
-            self.next_entity_id += 1;
-
-            return Some(T::get_refs(curr_page, curr_entity_idx, offsets));
         }
     }
 }
 
 impl<'a, T: ComponentQueryAccess> ExactSizeIterator for ComponentsQueryIter<'a, T> {
     fn len(&self) -> usize {
-        self.entities_count
+        self.queried_entities_count
     }
 }
 
@@ -183,10 +168,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.source_iter.next().map(|result| unsafe {
-            let curr_entity_id = self.source_iter.next_entity_id - 1;
-            let page = &*self.source_iter.curr_page_ptr;
-
-            let id = *page.entities_ids().get_unchecked(curr_entity_id);
+            let id = self.source_iter.current_page_iter.current_entity_id();
             let version = *self.entities_versions.add(id as usize);
 
             return (Entity { id, version }, result);
