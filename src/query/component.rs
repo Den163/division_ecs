@@ -2,10 +2,8 @@ use std::ptr::null;
 
 use crate::{
     archetype_data_page::ArchetypeDataPage,
-    query::access::{
-        ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess,
-    },
     component_tuple::ComponentTuple,
+    query::access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
     Entity, Store,
 };
 
@@ -26,7 +24,7 @@ pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
 
     current_page_view_index: usize,
     next_entity_id: usize,
-    entities_count: usize
+    entities_count: usize,
 }
 
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
@@ -68,18 +66,26 @@ impl Store {
     ) -> ComponentsQueryIter<'a, T> {
         let arch_container = &self.archetypes_container;
         let archetypes = arch_container.get_archetypes();
+        let layouts = arch_container.get_layouts();
         let pages = arch_container.get_pages();
         let mut entities_count = 0;
 
         query.page_views.clear();
         query.components_offsets.clear();
 
-        for (arch_idx, arch) in archetypes.into_iter().enumerate() {
+        for arch_idx in 0..archetypes.len() {
+            let (arch, layout) = unsafe {
+                (
+                    archetypes.get_unchecked(arch_idx),
+                    layouts.get_unchecked(arch_idx),
+                )
+            };
+
             if T::is_archetype_include_types(arch) == false {
                 continue;
             }
 
-            query.components_offsets.push(T::get_offsets(arch));
+            query.components_offsets.push(T::get_offsets(arch, layout));
 
             let components_offsets_index = query.components_offsets.len() - 1;
             let arch_pages = arch_container.get_archetype_page_indices(arch_idx);
@@ -106,7 +112,7 @@ impl Store {
             page_views: &query.page_views,
             store: self,
             curr_page_ptr: null(),
-            entities_count
+            entities_count,
         }
     }
 }

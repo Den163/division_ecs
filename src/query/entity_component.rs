@@ -81,13 +81,15 @@ impl Store {
             let arch_index = self
                 .archetypes_container
                 .get_archetype_index_by_page(range_page_index);
-            let arch = &self.archetypes_container.get_archetypes()[arch_index];
+            let (arch, layout) = unsafe {
+                self.archetypes_container.get_archetype_with_layout_unchecked(arch_index)
+            };
             let page = unsafe {
                 self.archetypes_container
                     .get_pages()
                     .get_unchecked(range_page_index)
             };
-            let comp_offsets = T::get_offsets(&arch);
+            let comp_offsets = T::get_offsets(&arch, &layout);
 
             let mut range_end = range_start + 1;
             while range_end < entities.len() {

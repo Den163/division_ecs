@@ -2,7 +2,7 @@ use paste::paste;
 
 use crate::{
     archetype_data_page::ArchetypeDataPage, type_ids, Archetype, ArchetypeBuilder,
-    Component,
+    Component, archetype_layout::ArchetypeLayout,
 };
 
 pub trait ComponentTuple {
@@ -10,9 +10,15 @@ pub trait ComponentTuple {
     type RefTuple<'a>;
     type MutRefTuple<'a>;
 
-    fn get_offsets_unchecked(archetype: &Archetype) -> Self::OffsetTuple;
+    fn get_offsets_unchecked(
+        archetype: &Archetype,
+        layout: &ArchetypeLayout,
+    ) -> Self::OffsetTuple;
 
-    fn get_offsets(archetype: &Archetype) -> Option<Self::OffsetTuple>;
+    fn get_offsets(
+        archetype: &Archetype,
+        layout: &ArchetypeLayout,
+    ) -> Option<Self::OffsetTuple>;
 
     fn get_refs<'a>(
         page: &'a ArchetypeDataPage,
@@ -49,11 +55,11 @@ macro_rules! components_tuple_impl {
             type MutRefTuple<'a> = ($(&'a mut $T),*);
 
             #[inline(always)]
-            fn get_offsets_unchecked(archetype: &Archetype) -> Self::OffsetTuple {
+            fn get_offsets_unchecked(archetype: &Archetype, layout: &ArchetypeLayout) -> Self::OffsetTuple {
                 unsafe {(
                     $(
                         *(
-                            archetype.component_offsets().add(
+                            layout.component_offsets().add(
                                 archetype.find_component_index_of::<$T>()
                                         .unwrap_unchecked()
                             )
@@ -63,11 +69,11 @@ macro_rules! components_tuple_impl {
             }
 
             #[inline(always)]
-            fn get_offsets(archetype: &Archetype) -> Option<Self::OffsetTuple> {
+            fn get_offsets(archetype: &Archetype, layout: &ArchetypeLayout) -> Option<Self::OffsetTuple> {
                 unsafe {Some((
                     $({
                         if let Some(idx) = archetype.find_component_index_of::<$T>() {
-                            *archetype.component_offsets().add(idx)
+                            *layout.component_offsets().add(idx)
                         } else {
                             return None
                         }

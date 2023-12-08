@@ -13,5 +13,6 @@ debug = 2
 rand = "0.8.5"
 
 [dependencies]
-paste = "1.0.14"
 division_ecs_attributes = { path = "./division_ecs_attributes" }
+paste = "1.0.14"
+rustc-hash = "1.1.0"

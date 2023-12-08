@@ -2,12 +2,14 @@ use crate::{
     archetype::Archetype,
     archetype_data_page::{ArchetypeDataPage, SwapRemoveInfo},
     archetype_data_page_view::ArchetypeDataPageView,
+    archetype_layout::ArchetypeLayout,
     entity_in_archetype::EntityInArchetype,
 };
 
 #[derive(Debug)]
 pub(crate) struct ArchetypesContainer {
     archetypes: Vec<Archetype>,
+    layouts: Vec<ArchetypeLayout>,
     archetype_to_pages: Vec<ArchetypePages>,
 
     pages: Vec<ArchetypeDataPage>,
@@ -28,6 +30,7 @@ impl ArchetypesContainer {
 
     pub fn new() -> ArchetypesContainer {
         let archetypes = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
+        let layouts = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
 
         let archetype_to_pages = Vec::with_capacity(Self::ARCHETYPE_DEFAULT_CAPACITY);
 
@@ -44,6 +47,7 @@ impl ArchetypesContainer {
 
         ArchetypesContainer {
             archetypes,
+            layouts,
             archetype_to_pages,
 
             pages,
@@ -74,9 +78,11 @@ impl ArchetypesContainer {
         let page_will_empty = page.entities_count() == 1;
 
         let arch = &self.archetypes[arch_index];
+        let layout = &self.layouts[arch_index];
         let swap_remove = page.swap_remove_entity_at_index(
             entity_in_archetype.index_in_page as usize,
             &arch,
+            &layout,
         );
 
         if page_will_empty {
@@ -100,6 +106,9 @@ impl ArchetypesContainer {
         let new_page = &self.pages[new_entity_in_arch.page_index as usize];
         let prev_archetype = &self.archetypes[previous_archetype_index];
 
+        let prev_layout = &self.layouts[previous_archetype_index];
+        let new_layout = &self.layouts[new_archetype_index];
+
         unsafe {
             ArchetypeDataPage::copy_component_data_to_page_with_new_archetype(
                 prev_page,
@@ -108,6 +117,8 @@ impl ArchetypesContainer {
                 new_entity_in_arch.index_in_page as usize,
                 prev_archetype,
                 new_archetype,
+                prev_layout,
+                new_layout,
             );
         }
 
@@ -122,6 +133,7 @@ impl ArchetypesContainer {
         let arch_idx = *self.page_to_archetype.get_unchecked(page_index) as usize;
         ArchetypeDataPageView {
             archetype: self.archetypes.get_unchecked(arch_idx),
+            layout: self.layouts.get_unchecked(arch_idx),
             page: self.pages.get_unchecked(page_index),
         }
     }
@@ -129,6 +141,22 @@ impl ArchetypesContainer {
     #[inline]
     pub fn get_archetypes(&self) -> &[Archetype] {
         &self.archetypes
+    }
+
+    #[inline]
+    pub fn get_layouts(&self) -> &[ArchetypeLayout] {
+        &self.layouts
+    }
+
+    #[inline]
+    pub unsafe fn get_archetype_with_layout_unchecked(
+        &self,
+        archetype_index: usize,
+    ) -> (&Archetype, &ArchetypeLayout) {
+        (
+            self.archetypes.get_unchecked(archetype_index),
+            self.layouts.get_unchecked(archetype_index),
+        )
     }
 
     #[inline]
@@ -180,14 +208,17 @@ impl ArchetypesContainer {
             }
         }
 
+        let layout = ArchetypeLayout::new(archetype);
         match self.free_archetypes.pop() {
             Some(free_idx) => {
                 self.archetypes[free_idx] = archetype.clone();
+                self.layouts[free_idx] = layout;
 
                 free_idx
             }
             None => {
                 self.archetypes.push(archetype.clone());
+                self.layouts.push(layout);
                 self.archetype_to_pages
                     .push(ArchetypePages { pages: Vec::new() });
 
@@ -229,8 +260,8 @@ impl ArchetypesContainer {
             }
         };
 
-        let arch = &self.archetypes[archetype_index];
-        self.pages[page_index].set_archetype(arch);
+        let layout = &self.layouts[archetype_index];
+        self.pages[page_index].set_layout(layout);
 
         self.archetype_to_pages[archetype_index]
             .pages

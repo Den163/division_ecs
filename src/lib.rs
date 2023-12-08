@@ -4,9 +4,11 @@ mod archetype_builder;
 
 mod archetype_data_page;
 mod archetype_data_page_view;
+mod archetype_layout;
 mod archetypes_container;
 mod bitvec_utils;
 mod component;
+mod component_tuple;
 mod component_type;
 mod entities_container;
 mod entity;
@@ -15,7 +17,6 @@ mod mem_utils;
 mod resource_store;
 mod store;
 mod tests;
-mod component_tuple;
 
 pub mod macros;
 pub mod query;

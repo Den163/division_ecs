@@ -1,4 +1,4 @@
-use crate::{archetype::ArchetypesUnion, mem_utils, Archetype};
+use crate::{archetype::ArchetypesUnion, mem_utils, Archetype, archetype_layout::ArchetypeLayout};
 
 /// Reusable page of the components data with a fixed size (4096 Bytes), related to the concrete archetype.
 /// It contains data for all components of the some entities subset
@@ -24,7 +24,7 @@ impl ArchetypeDataPage {
         }
     }
 
-    pub(crate) fn set_archetype(&mut self, archetype: &Archetype) {
+    pub(crate) fn set_layout(&mut self, archetype: &ArchetypeLayout) {
         let capacity = archetype.entities_capacity();
         self.entities_ids.reserve(capacity);
     }
@@ -59,12 +59,13 @@ impl ArchetypeDataPage {
         &mut self,
         index: usize,
         archetype: &Archetype,
+        layout: &ArchetypeLayout
     ) -> Option<SwapRemoveInfo> {
         self.entities_ids.swap_remove(index);
         let last_swapped_index = self.entities_ids.len();
         if index < last_swapped_index {
             unsafe {
-                self.move_component_data(last_swapped_index, index, archetype);
+                self.move_component_data(last_swapped_index, index, archetype, layout);
             }
 
             Some(SwapRemoveInfo {
@@ -81,9 +82,10 @@ impl ArchetypeDataPage {
         src_entity_index: usize,
         dst_entity_index: usize,
         archetype: &Archetype,
+        layout: &ArchetypeLayout
     ) {
         let sizes = archetype.component_sizes();
-        let offsets = archetype.component_offsets();
+        let offsets = layout.component_offsets();
 
         for i in 0..archetype.component_count() {
             let size = *sizes.add(i);
@@ -103,16 +105,18 @@ impl ArchetypeDataPage {
         dst_entity_index: usize,
         src_archetype: &Archetype,
         dst_archetype: &Archetype,
+        src_layout: &ArchetypeLayout,
+        dst_layout: &ArchetypeLayout
     ) {
         let arch_union = ArchetypesUnion::calculate(src_archetype, dst_archetype);
 
         for i in 0..arch_union.len() {
             let src_type_index = arch_union.lhs_indices[i];
-            let src_offset = *src_archetype.component_offsets().add(src_type_index);
+            let src_offset = *src_layout.component_offsets().add(src_type_index);
             let src_size = *src_archetype.component_sizes().add(src_type_index);
 
             let dst_type_index = arch_union.rhs_indices[i];
-            let dst_offset = *dst_archetype.component_offsets().add(dst_type_index);
+            let dst_offset = *dst_layout.component_offsets().add(dst_type_index);
             let dst_size = *dst_archetype.component_sizes().add(dst_type_index);
 
             let src_ptr =
