@@ -1,14 +1,9 @@
 use crate::{
-    archetype::Archetype,
-    archetype_data_page::ArchetypeDataPage,
+    archetype::Archetype, archetype_data_page::ArchetypeDataPage,
     archetype_data_page_view::ArchetypeDataPageView,
-    archetypes_container::ArchetypesContainer,
-    bitvec_utils,
-    entities_container::EntitiesContainer,
-    entity_in_archetype::EntityInArchetype,
-    mem_utils,
-    component_tuple::ComponentTuple,
-    ArchetypeBuilder, Entity,
+    archetypes_container::ArchetypesContainer, bitvec_utils,
+    component_tuple::ComponentTuple, entities_container::EntitiesContainer,
+    entity_in_archetype::EntityInArchetype, mem_utils, ArchetypeBuilder, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -104,22 +99,27 @@ impl Store {
         let has_archetype = unsafe { self.has_archetype_unchecked(entity.id) };
 
         let entity_in_archetype = if has_archetype {
-            let prev_entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
-            let prev_arch_index = self
+            let entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
+            let arch_index = self
                 .archetypes_container
-                .get_archetype_index_by_page(prev_entity_in_arch.page_index as usize);
+                .get_archetype_index_by_page(entity_in_arch.page_index as usize);
 
-            let prev_arch = unsafe {
+            let arch = unsafe {
                 self.archetypes_container
                     .get_archetypes()
-                    .get_unchecked(prev_arch_index)
+                    .get_unchecked(arch_index)
             };
-            let new_arch = ArchetypeBuilder::new()
-                .include_archetype(&prev_arch)
-                .include_components::<T>()
-                .build();
 
-            self.move_entity_to_other_archetype(entity, &new_arch)
+            if T::is_archetype_include_types(arch) {
+                entity_in_arch
+            } else {
+                let new_arch = ArchetypeBuilder::new()
+                    .include_archetype(&arch)
+                    .include_components::<T>()
+                    .build();
+
+                self.move_entity_to_other_archetype(entity, &new_arch)
+            }
         } else {
             let archetype = Archetype::with_components::<T>();
             let entity_in_arch =
