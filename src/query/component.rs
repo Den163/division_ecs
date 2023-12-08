@@ -119,10 +119,6 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
     type Item = T::AccessOutput<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_page_index >= self.page_views.len() {
-            return None;
-        }
-
         let current_iter = &mut self.current_page_iter;
 
         if let Some(val) = current_iter.next() {
