@@ -1,47 +1,43 @@
-use std::{marker::PhantomData, ptr::null};
+use std::ptr::null;
 
 use crate::archetype_data_page::ArchetypeDataPage;
 
 use super::access::ComponentQueryAccess;
 
 pub struct ComponentPageIter<'a, T: ComponentQueryAccess> {
-    page_ptr: *const ArchetypeDataPage,
-    component_offsets: T::OffsetsTuple,
+    ptrs: T::PtrTuple<'a>,
+
+    entity_ids: *const u32,
     next_entity_index: usize,
     entities_len: usize,
-
-    phantom_data: PhantomData<&'a T>,
 }
 
 impl<'a, T: ComponentQueryAccess> ComponentPageIter<'a, T> {
-    pub unsafe fn new(
-        page_ptr: *const ArchetypeDataPage,
-        component_offsets: T::OffsetsTuple,
+    pub unsafe fn new<'b: 'a>(
+        page: &'b ArchetypeDataPage,
+        component_offsets: &T::OffsetTuple,
     ) -> Self {
+        let ptrs = T::get_ptrs(page, component_offsets);
+
         Self {
-            page_ptr,
-            component_offsets,
+            ptrs,
+            entity_ids: page.entity_id_ptrs(),
             next_entity_index: 0,
-            entities_len: (&*page_ptr).entities_count(),
-            phantom_data: PhantomData::default(),
+            entities_len: page.entity_count(),
         }
     }
 
     pub fn empty() -> Self {
         Self {
-            page_ptr: null(),
-            component_offsets: T::OffsetsTuple::default(),
+            ptrs: T::null_ptrs::<'a>(),
+            entity_ids: null(),
             next_entity_index: 0,
             entities_len: 0,
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub unsafe fn current_entity_id(&self) -> u32 {
-        let page = &*self.page_ptr;
-        *page
-            .entities_ids()
-            .get_unchecked(self.next_entity_index - 1)
+        *self.entity_ids.add(self.next_entity_index - 1)
     }
 }
 
@@ -53,12 +49,13 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentPageIter<'a, T> {
             return None;
         }
 
-        let page = unsafe { &*self.page_ptr };
         let curr_entity_idx = self.next_entity_index;
+        let ptrs = T::add_to_ptrs(&self.ptrs, curr_entity_idx);
 
         self.next_entity_index += 1;
 
-        return Some(T::get_refs(page, curr_entity_idx, &self.component_offsets));
+        
+        return Some(T::ptrs_to_refs(ptrs));
     }
 }
 

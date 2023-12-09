@@ -30,23 +30,23 @@ impl ArchetypeDataPage {
     }
 
     #[inline(always)]
-    pub(crate) fn entities_count(&self) -> usize {
+    pub(crate) fn entity_count(&self) -> usize {
         self.entities_ids.len()
     }
 
     #[inline(always)]
-    pub(crate) fn entities_capacity(&self) -> usize {
+    pub(crate) fn entity_capacity(&self) -> usize {
         self.entities_ids.capacity()
     }
 
     #[inline(always)]
-    pub(crate) fn entities_ids<'a>(&'a self) -> &'a [u32] {
-        &self.entities_ids
+    pub(crate) unsafe fn entity_id_ptrs(&self) -> *const u32 {
+        self.entities_ids.as_ptr()
     }
 
     #[inline(always)]
     pub(crate) fn has_free_space(&self) -> bool {
-        self.entities_count() < self.entities_capacity()
+        self.entity_count() < self.entity_capacity()
     }
 
     pub(crate) fn add_entity_id(&mut self, id: u32) -> usize {

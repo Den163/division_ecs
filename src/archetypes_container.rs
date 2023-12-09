@@ -75,7 +75,7 @@ impl ArchetypesContainer {
         let arch_index = self.page_to_archetype[page_index];
 
         let page = &mut self.pages[page_index];
-        let page_will_empty = page.entities_count() == 1;
+        let page_will_empty = page.entity_count() == 1;
 
         let arch = &self.archetypes[arch_index];
         let layout = &self.layouts[arch_index];

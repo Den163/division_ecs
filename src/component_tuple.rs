@@ -7,8 +7,8 @@ use crate::{
 
 pub trait ComponentTuple {
     type OffsetTuple: Default + Copy;
-    type PtrTuple;
-    type MutPtrTuple;
+    type PtrTuple<'a>;
+    type MutPtrTuple<'a>;
     type RefTuple<'a>;
     type MutRefTuple<'a>;
 
@@ -34,6 +34,23 @@ pub trait ComponentTuple {
         offsets: &Self::OffsetTuple,
     ) -> Self::MutRefTuple<'a>;
 
+    fn get_ptrs<'a>(
+        page: &'a ArchetypeDataPage, offsets: &Self::OffsetTuple
+    ) -> Self::PtrTuple<'a>;
+
+    fn get_ptrs_mut<'a>(
+        page: &'a ArchetypeDataPage, offsets: &Self::OffsetTuple
+    ) -> Self::MutPtrTuple<'a>;
+
+    fn add_to_ptrs<'a>(ptrs: &Self::PtrTuple<'a>, entity_index: usize) -> Self::PtrTuple<'a>;
+    fn add_to_ptrs_mut<'a>(ptrs: &Self::MutPtrTuple<'a>, entity_index: usize) -> Self::MutPtrTuple<'a>;
+
+    fn null_ptrs<'a>() -> Self::PtrTuple<'a>;
+    fn null_ptrs_mut<'a>() -> Self::MutPtrTuple<'a>;
+
+    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple<'a>) -> Self::RefTuple<'a>;
+    fn ptrs_to_refs_mut<'a>(ptrs: Self::MutPtrTuple<'a>) -> Self::MutRefTuple<'a>;
+
     fn assign_to_refs<'a>(refs: Self::MutRefTuple<'a>, values: Self);
 
     fn into_archetype() -> Archetype;
@@ -53,13 +70,15 @@ macro_rules! components_tuple_impl {
         #[allow(unused_parens)]
         impl<$($T: 'static + Component),*> ComponentTuple for ($($T),*) {
             type OffsetTuple = ($(components_tuple_impl!(@type_to_usize, $T)),*);
-            type PtrTuple = ($(*const $T),*);
-            type MutPtrTuple = ($(*mut $T),*);
+            type PtrTuple<'a> = ($(*const $T),*);
+            type MutPtrTuple<'a> = ($(*mut $T),*);
             type RefTuple<'a> = ($(&'a $T),*);
             type MutRefTuple<'a> = ($(&'a mut $T),*);
 
             #[inline(always)]
-            fn get_offsets_unchecked(archetype: &Archetype, layout: &ArchetypeLayout) -> Self::OffsetTuple {
+            fn get_offsets_unchecked(
+                archetype: &Archetype, layout: &ArchetypeLayout
+            ) -> Self::OffsetTuple {
                 unsafe {(
                     $(
                         *(
@@ -73,7 +92,9 @@ macro_rules! components_tuple_impl {
             }
 
             #[inline(always)]
-            fn get_offsets(archetype: &Archetype, layout: &ArchetypeLayout) -> Option<Self::OffsetTuple> {
+            fn get_offsets(
+                archetype: &Archetype, layout: &ArchetypeLayout
+            ) -> Option<Self::OffsetTuple> {
                 unsafe {Some((
                     $({
                         if let Some(idx) = archetype.find_component_index_of::<$T>() {
@@ -122,6 +143,93 @@ macro_rules! components_tuple_impl {
             }
 
             #[inline(always)]
+            fn get_ptrs<'a>(
+                page: &'a ArchetypeDataPage, 
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::OffsetTuple
+            ) -> Self::PtrTuple<'a> {
+                (
+                    $(
+                        page.get_component_data_ptr(
+                            0, 
+                            *paste!{ [<$T:lower>] }, 
+                            std::mem::size_of::<$T>()) as *const $T
+                    ),*
+                )
+            }
+
+            #[inline(always)]
+            fn get_ptrs_mut<'a>(
+                page: &'a ArchetypeDataPage,
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::OffsetTuple
+            ) -> Self::MutPtrTuple<'a> {
+                (
+                    $(
+                        page.get_component_data_ptr(
+                            0, 
+                            *paste!{ [<$T:lower>] }, 
+                            std::mem::size_of::<$T>()) as *mut $T
+                    ),*
+                )
+            }
+
+            #[inline(always)]
+            fn add_to_ptrs<'a>(
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::PtrTuple<'a>, 
+                entity_index: usize
+            ) -> Self::PtrTuple<'a> {
+                    unsafe {(
+                        $(
+                            paste!{ [<$T:lower>] }.add(entity_index)
+                        ),*
+                    )}
+
+            }
+
+            #[inline(always)]
+            fn add_to_ptrs_mut<'a>(
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::MutPtrTuple<'a>, 
+                entity_index: usize
+            ) -> Self::MutPtrTuple<'a> {
+                    unsafe {(
+                        $(
+                            paste!{ [<$T:lower>] }.add(entity_index)
+                        ),*
+                    )}
+            }
+
+            #[inline(always)]
+            fn null_ptrs<'a>() -> Self::PtrTuple<'a> {
+                ($(std::ptr::null::<$T>()),*)
+            }
+
+            #[inline(always)]
+            fn null_ptrs_mut<'a>() -> Self::MutPtrTuple<'a> {
+                ($(std::ptr::null_mut::<$T>()),*)
+            }
+
+            #[inline(always)]
+            fn ptrs_to_refs<'a>(
+                ($( paste!([<$T:lower>]) ),*): <($($T),*) as ComponentTuple>::PtrTuple<'a>,
+            ) -> Self::RefTuple<'a> {
+                unsafe {(
+                    $(
+                        &*paste!{ [<$T:lower>] }
+                    ),*
+                )}
+            }
+            
+            #[inline(always)]
+            fn ptrs_to_refs_mut<'a>(
+                ($( paste!([<$T:lower>]) ),*): <($($T),*) as ComponentTuple>::MutPtrTuple<'a>,
+            ) -> Self::MutRefTuple<'a> {
+                unsafe {(
+                    $(
+                        &mut *paste!{ [<$T:lower>] }
+                    ),*
+                )}
+            }
+
+            #[inline(always)]
             fn assign_to_refs<'a>(
                 ($( paste!([<$T:lower>]) ),*): <($($T),*) as ComponentTuple>::MutRefTuple<'a>,
                 ($( paste!([<v_$T:lower>]) ),*): Self
@@ -132,7 +240,7 @@ macro_rules! components_tuple_impl {
                     ),*
                 );
             }
-
+            
             fn into_archetype() -> $crate::Archetype
             {
                 let components = &mut $crate::component_types!( $($T),* );

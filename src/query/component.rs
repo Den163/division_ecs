@@ -31,7 +31,7 @@ pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
 
 pub(crate) struct PageIterView<T: ComponentQueryAccess> {
     page: *const ArchetypeDataPage,
-    component_offsets: T::OffsetsTuple,
+    component_offsets: T::OffsetTuple,
 }
 
 pub fn readonly<R: ComponentTuple>() -> ComponentQuery<ReadonlyAccess<R>> {
@@ -82,7 +82,7 @@ impl Store {
 
             for page_idx in arch_pages {
                 let page = &pages[*page_idx];
-                let page_entities_count = page.entities_count();
+                let page_entities_count = page.entity_count();
                 if page_entities_count == 0 {
                     continue;
                 }
@@ -99,7 +99,7 @@ impl Store {
             let first_page = &query.page_views[0];
 
             unsafe {
-                ComponentPageIter::new(first_page.page, first_page.component_offsets)
+                ComponentPageIter::new(&*first_page.page, &first_page.component_offsets)
             }
         } else {
             ComponentPageIter::empty()
@@ -131,7 +131,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
                 unsafe { self.page_views.get_unchecked(self.current_page_index) };
 
             self.current_page_iter = unsafe {
-                ComponentPageIter::new(page_view.page, page_view.component_offsets)
+                ComponentPageIter::new(&*page_view.page, &page_view.component_offsets)
             };
 
             return self.current_page_iter.next();

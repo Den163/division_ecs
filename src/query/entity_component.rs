@@ -14,7 +14,7 @@ pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
     entity_index_ranges: Vec<Range<usize>>,
-    range_to_component_offsets: Vec<T::OffsetsTuple>,
+    range_to_component_offsets: Vec<T::OffsetTuple>,
     range_to_pages: Vec<*const ArchetypeDataPage>,
 }
 
@@ -22,7 +22,7 @@ pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
     store: &'a Store,
     entities: &'a [Entity],
     entity_ranges: &'a [Range<usize>],
-    range_component_offsets: &'a [T::OffsetsTuple],
+    range_component_offsets: &'a [T::OffsetTuple],
     range_pages: &'a [*const ArchetypeDataPage],
     current_entity_index: usize,
 
