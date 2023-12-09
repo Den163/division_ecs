@@ -309,6 +309,11 @@ impl Store {
     }
 
     #[inline(always)]
+    pub(crate) unsafe fn entity_to_index_in_page_ptr(&self) -> *const u32 {
+        self.entity_to_index_in_page
+    }
+
+    #[inline(always)]
     pub(crate) unsafe fn has_archetype_unchecked(&self, entity_id: u32) -> bool {
         bitvec_utils::is_bit_on(self.entity_has_archetype_bit_vec, entity_id as usize)
     }

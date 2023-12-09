@@ -19,7 +19,7 @@ pub struct EntityComponentQuery<T: ComponentQueryAccess> {
 }
 
 pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
-    store: &'a Store,
+    entity_to_index_in_page_ptr: *const u32,
     entities: &'a [Entity],
     entity_ranges: &'a [Range<usize>],
     range_pages: &'a [ComponentPageIterView<T>],
@@ -110,7 +110,7 @@ impl Store {
         }
 
         EntityComponentQueryIter {
-            store: &self,
+            entity_to_index_in_page_ptr: unsafe { self.entity_to_index_in_page_ptr() },
             entities: &entities,
             entity_ranges: &query.entity_index_ranges,
             range_pages: &query.range_to_page_views,
@@ -144,7 +144,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
             let current_entity = self.entities.get_unchecked(self.current_entity_index);
             let page = *self.range_pages.get_unchecked(self.next_range_index);
             (
-                self.store.get_index_in_page_unchecked(current_entity.id),
+                *self.entity_to_index_in_page_ptr.add(current_entity.id as usize),
                 page,
             )
         };
