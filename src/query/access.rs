@@ -21,7 +21,7 @@ pub struct ReadWriteAccess<TRead: ComponentTuple, TWrite: ComponentTuple> {
 pub trait ComponentQueryAccess {
     type AccessOutput<'a>;
     type OffsetTuple: Default + Copy;
-    type PtrTuple<'a>;
+    type PtrTuple;
 
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
 
@@ -33,19 +33,19 @@ pub trait ComponentQueryAccess {
 
     fn get_offsets(archetype: &Archetype, layout: &ArchetypeLayout) -> Self::OffsetTuple;
 
-    fn get_ptrs<'a>(
-        page: &'a ArchetypeDataPage,
+    fn get_ptrs(
+        page: &ArchetypeDataPage,
         offsets: &Self::OffsetTuple,
-    ) -> Self::PtrTuple<'a>;
+    ) -> Self::PtrTuple;
 
-    fn add_to_ptrs<'a>(
-        ptrs: &Self::PtrTuple<'a>,
+    fn add_to_ptrs(
+        ptrs: &Self::PtrTuple,
         entity_index: usize,
-    ) -> Self::PtrTuple<'a>;
+    ) -> Self::PtrTuple;
 
-    fn null_ptrs<'a>() -> Self::PtrTuple<'a>;
+    fn null_ptrs() -> Self::PtrTuple;
 
-    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple<'a>) -> Self::AccessOutput<'a>;
+    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple) -> Self::AccessOutput<'a>;
 }
 
 impl<TRead, TWrite> ComponentQueryAccess for ReadWriteAccess<TRead, TWrite>
@@ -53,7 +53,7 @@ where
     TRead: ComponentTuple,
     TWrite: ComponentTuple,
 {
-    type PtrTuple<'a> = (TRead::PtrTuple<'a>, TWrite::MutPtrTuple<'a>);
+    type PtrTuple = (TRead::PtrTuple, TWrite::MutPtrTuple);
     type OffsetTuple = (TRead::OffsetTuple, TWrite::OffsetTuple);
     type AccessOutput<'a> = (TRead::RefTuple<'a>, TWrite::MutRefTuple<'a>);
 
@@ -84,10 +84,10 @@ where
     }
 
     #[inline(always)]
-    fn get_ptrs<'a>(
-        page: &'a ArchetypeDataPage,
+    fn get_ptrs(
+        page: &ArchetypeDataPage,
         (read_offsets, write_offsets): &Self::OffsetTuple,
-    ) -> Self::PtrTuple<'a> {
+    ) -> Self::PtrTuple {
         (
             TRead::get_ptrs(page, read_offsets),
             TWrite::get_ptrs_mut(page, write_offsets),
@@ -95,10 +95,10 @@ where
     }
 
     #[inline(always)]
-    fn add_to_ptrs<'a>(
-        (read_ptrs, write_ptrs): &Self::PtrTuple<'a>,
+    fn add_to_ptrs(
+        (read_ptrs, write_ptrs): &Self::PtrTuple,
         entity_index: usize,
-    ) -> Self::PtrTuple<'a> {
+    ) -> Self::PtrTuple {
         (
             TRead::add_to_ptrs(read_ptrs, entity_index),
             TWrite::add_to_ptrs_mut(write_ptrs, entity_index),
@@ -106,12 +106,12 @@ where
     }
 
     #[inline(always)]
-    fn null_ptrs<'a>() -> Self::PtrTuple<'a> {
+    fn null_ptrs() -> Self::PtrTuple {
         (TRead::null_ptrs(), TWrite::null_ptrs_mut())
     }
 
     #[inline(always)]
-    fn ptrs_to_refs<'a>((read, write): Self::PtrTuple<'a>) -> Self::AccessOutput<'a> {
+    fn ptrs_to_refs<'a>((read, write): Self::PtrTuple) -> Self::AccessOutput<'a> {
         (TRead::ptrs_to_refs(read), TWrite::ptrs_to_refs_mut(write))
     }
 }
@@ -119,7 +119,7 @@ where
 impl<TRead: ComponentTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
     type OffsetTuple = TRead::OffsetTuple;
     type AccessOutput<'a> = TRead::RefTuple<'a>;
-    type PtrTuple<'a> = TRead::PtrTuple<'a>;
+    type PtrTuple = TRead::PtrTuple;
 
     #[inline(always)]
     fn is_archetype_include_types(archetype: &Archetype) -> bool {
@@ -141,22 +141,22 @@ impl<TRead: ComponentTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
     }
 
     #[inline(always)]
-    fn get_ptrs<'a>(page: &'a ArchetypeDataPage, offsets: &Self::OffsetTuple) -> Self::PtrTuple<'a> {
+    fn get_ptrs(page: &ArchetypeDataPage, offsets: &Self::OffsetTuple) -> Self::PtrTuple {
         TRead::get_ptrs(page, offsets)
     }
 
     #[inline(always)]
-    fn add_to_ptrs<'a>(ptrs: &Self::PtrTuple<'a>, entity_index: usize) -> Self::PtrTuple<'a> {
+    fn add_to_ptrs(ptrs: &Self::PtrTuple, entity_index: usize) -> Self::PtrTuple {
         TRead::add_to_ptrs(ptrs, entity_index)
     }
 
     #[inline(always)]
-    fn null_ptrs<'a>() -> Self::PtrTuple<'a> {
+    fn null_ptrs() -> Self::PtrTuple {
         TRead::null_ptrs()
     }
 
     #[inline(always)]
-    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple<'a>) -> Self::AccessOutput<'a> {
+    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple) -> Self::AccessOutput<'a> {
         TRead::ptrs_to_refs(ptrs)
     }
 }
@@ -164,7 +164,7 @@ impl<TRead: ComponentTuple> ComponentQueryAccess for ReadonlyAccess<TRead> {
 impl<TWrite: ComponentTuple> ComponentQueryAccess for WriteAccess<TWrite> {
     type OffsetTuple = TWrite::OffsetTuple;
     type AccessOutput<'a> = TWrite::MutRefTuple<'a>;
-    type PtrTuple<'a> = TWrite::MutPtrTuple<'a>;
+    type PtrTuple = TWrite::MutPtrTuple;
 
     #[inline(always)]
     fn is_archetype_include_types(archetype: &Archetype) -> bool {
@@ -186,22 +186,22 @@ impl<TWrite: ComponentTuple> ComponentQueryAccess for WriteAccess<TWrite> {
     }
 
     #[inline(always)]
-    fn get_ptrs<'a>(page: &'a ArchetypeDataPage, offsets: &Self::OffsetTuple) -> Self::PtrTuple<'a> {
+    fn get_ptrs(page: &ArchetypeDataPage, offsets: &Self::OffsetTuple) -> Self::PtrTuple {
         TWrite::get_ptrs_mut(page, offsets)
     }
 
     #[inline(always)]
-    fn add_to_ptrs<'a>(ptrs: &Self::PtrTuple<'a>, entity_index: usize) -> Self::PtrTuple<'a> {
+    fn add_to_ptrs(ptrs: &Self::PtrTuple, entity_index: usize) -> Self::PtrTuple {
         TWrite::add_to_ptrs_mut(ptrs, entity_index)
     }
 
     #[inline(always)]
-    fn null_ptrs<'a>() -> Self::PtrTuple<'a> {
+    fn null_ptrs() -> Self::PtrTuple {
         TWrite::null_ptrs_mut()
     }
 
     #[inline(always)]
-    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple<'a>) -> Self::AccessOutput<'a> {
+    fn ptrs_to_refs<'a>(ptrs: Self::PtrTuple) -> Self::AccessOutput<'a> {
         TWrite::ptrs_to_refs_mut(ptrs)
     }
 }

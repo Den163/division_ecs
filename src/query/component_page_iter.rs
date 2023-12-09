@@ -1,15 +1,17 @@
-use std::ptr::null;
+use std::{ptr::null, marker::PhantomData};
 
 use crate::archetype_data_page::ArchetypeDataPage;
 
 use super::access::ComponentQueryAccess;
 
 pub struct ComponentPageIter<'a, T: ComponentQueryAccess> {
-    ptrs: T::PtrTuple<'a>,
-
+    ptrs: T::PtrTuple,
     entity_ids: *const u32,
-    next_entity_index: usize,
     entities_len: usize,
+
+    next_entity_index: usize,
+
+    _lifetime: PhantomData<&'a T>
 }
 
 impl<'a, T: ComponentQueryAccess> ComponentPageIter<'a, T> {
@@ -24,15 +26,19 @@ impl<'a, T: ComponentQueryAccess> ComponentPageIter<'a, T> {
             entity_ids: page.entity_id_ptrs(),
             next_entity_index: 0,
             entities_len: page.entity_count(),
+
+            _lifetime: PhantomData::default()
         }
     }
 
     pub fn empty() -> Self {
         Self {
-            ptrs: T::null_ptrs::<'a>(),
+            ptrs: T::null_ptrs(),
             entity_ids: null(),
             next_entity_index: 0,
             entities_len: 0,
+
+            _lifetime: PhantomData::default()
         }
     }
 
