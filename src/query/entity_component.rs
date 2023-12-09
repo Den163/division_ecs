@@ -1,11 +1,12 @@
 use std::ops::Range;
 
 use crate::{
-    archetype_data_page::ArchetypeDataPage,
     query::access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
     component_tuple::ComponentTuple,
     Entity, Store,
 };
+
+use super::component_page_iter_view::ComponentPageIterView;
 
 pub type EntityComponentReadWriteQuery<R, W> =
     EntityComponentQuery<ReadWriteAccess<R, W>>;
@@ -14,16 +15,14 @@ pub type EntityComponentWriteQuery<W> = EntityComponentQuery<WriteAccess<W>>;
 
 pub struct EntityComponentQuery<T: ComponentQueryAccess> {
     entity_index_ranges: Vec<Range<usize>>,
-    range_to_component_offsets: Vec<T::OffsetTuple>,
-    range_to_pages: Vec<*const ArchetypeDataPage>,
+    range_to_page_views: Vec<ComponentPageIterView<T>>,
 }
 
 pub struct EntityComponentQueryIter<'a, T: ComponentQueryAccess> {
     store: &'a Store,
     entities: &'a [Entity],
     entity_ranges: &'a [Range<usize>],
-    range_component_offsets: &'a [T::OffsetTuple],
-    range_pages: &'a [*const ArchetypeDataPage],
+    range_pages: &'a [ComponentPageIterView<T>],
     current_entity_index: usize,
 
     next_range_index: usize,
@@ -38,8 +37,7 @@ impl<T: ComponentQueryAccess> EntityComponentQuery<T> {
     pub fn new() -> Self {
         Self {
             entity_index_ranges: Vec::new(),
-            range_to_component_offsets: Vec::new(),
-            range_to_pages: Vec::new(),
+            range_to_page_views: Vec::new(),
         }
     }
 }
@@ -64,8 +62,7 @@ impl Store {
         query: &'b mut EntityComponentQuery<T>,
     ) -> EntityComponentQueryIter<'a, T> {
         query.entity_index_ranges.clear();
-        query.range_to_pages.clear();
-        query.range_to_component_offsets.clear();
+        query.range_to_page_views.clear();
 
         let mut range_start = 0;
         while range_start < entities.len() {
@@ -105,8 +102,9 @@ impl Store {
             }
 
             query.entity_index_ranges.push(range_start..range_end);
-            query.range_to_component_offsets.push(comp_offsets);
-            query.range_to_pages.push(page as *const ArchetypeDataPage);
+            query.range_to_page_views.push(unsafe {
+                ComponentPageIterView::new(page, &comp_offsets)
+            });
 
             range_start = range_end;
         }
@@ -115,8 +113,7 @@ impl Store {
             store: &self,
             entities: &entities,
             entity_ranges: &query.entity_index_ranges,
-            range_pages: &query.range_to_pages,
-            range_component_offsets: &query.range_to_component_offsets,
+            range_pages: &query.range_to_page_views,
             next_range_index: 0,
             next_offset_from_range: 0,
             current_entity_index: 0,
@@ -143,14 +140,12 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
             unsafe { self.entity_ranges.get_unchecked(self.next_range_index) };
         self.current_entity_index = current_range.start + self.next_offset_from_range;
 
-        let (index_in_page, page, offsets) = unsafe {
+        let (index_in_page, page_view) = unsafe {
             let current_entity = self.entities.get_unchecked(self.current_entity_index);
             let page = *self.range_pages.get_unchecked(self.next_range_index);
             (
                 self.store.get_index_in_page_unchecked(current_entity.id),
-                &*page,
-                self.range_component_offsets
-                    .get_unchecked(self.next_range_index),
+                page,
             )
         };
 
@@ -161,7 +156,8 @@ impl<'a, T: ComponentQueryAccess> Iterator for EntityComponentQueryIter<'a, T> {
             self.next_offset_from_range += 1;
         }
 
-        Some(T::get_refs(page, index_in_page as usize, &offsets))
+        let ptrs = T::add_to_ptrs(&page_view.ptrs, index_in_page as usize);
+        return Some(T::ptrs_to_refs(ptrs));
     }
 }
 

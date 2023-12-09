@@ -1,5 +1,6 @@
 use std::ptr::null;
 
+use crate::archetype_data_page::ArchetypeDataPage;
 use super::access::ComponentQueryAccess;
 
 pub struct ComponentPageIterView<T: ComponentQueryAccess> {
@@ -9,6 +10,14 @@ pub struct ComponentPageIterView<T: ComponentQueryAccess> {
 }
 
 impl<T: ComponentQueryAccess> ComponentPageIterView<T> {
+    pub unsafe fn new(page: &ArchetypeDataPage, component_offsets: &T::OffsetTuple) -> Self {
+        Self {
+            ptrs: T::get_ptrs(page, &component_offsets),
+            entity_ids: page.entity_id_ptrs(),
+            entity_count: page.entity_count()
+        }
+    }
+
     pub fn empty() -> Self {
         Self {
             ptrs: T::null_ptrs(),
