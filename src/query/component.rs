@@ -4,7 +4,7 @@ use crate::{
     Entity, Store,
 };
 
-use super::component_page_iter_view::ComponentPageIterView;
+use super::{component_page_iter::ComponentPageIter, component_page_iter_view::ComponentPageIterView};
 
 pub type ComponentReadWriteQuery<R, W> = ComponentQuery<ReadWriteAccess<R, W>>;
 pub type ComponentReadOnlyQuery<R> = ComponentQuery<ReadonlyAccess<R>>;
@@ -15,14 +15,11 @@ pub struct ComponentQuery<T: ComponentQueryAccess> {
 }
 
 pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
-    versions: *const u32,
-
+    store: &'a Store,
     page_views: &'a [ComponentPageIterView<T>],
+    current_page_iter: ComponentPageIter<'a, T>,
 
     current_page_index: usize,
-    current_entity_index: usize,
-    current_entity_id: u32,
-
     queried_entities_count: usize,
 }
 
@@ -93,15 +90,19 @@ impl Store {
             }
         }
 
+        let page_iter = if query.page_views.len() > 0 {
+            let page_view = query.page_views[0];
+
+            ComponentPageIter::new(page_view)
+        } else {
+            ComponentPageIter::empty()
+        };
+
         ComponentsQueryIter {
-            versions: self.entities_container.entity_versions(),
-
+            current_page_iter: page_iter,
+            store: &self,
             page_views: &query.page_views,
-
             current_page_index: 0,
-            current_entity_index: 0,
-            current_entity_id: 0,
-
             queried_entities_count,
         }
     }
@@ -111,28 +112,24 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
     type Item = T::AccessOutput<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_page_index >= self.page_views.len() {
-            return None;
+        let current_iter = &mut self.current_page_iter;
+
+        if let Some(val) = current_iter.next() {
+            return Some(val);
         }
 
-        let page_view = unsafe {
-            self.page_views.get_unchecked(self.current_page_index)
-        };
+        self.current_page_index += 1;
+        if self.current_page_index < self.page_views.len() {
+            let page_view =
+                unsafe { self.page_views.get_unchecked(self.current_page_index) };
 
-        self.current_entity_id = unsafe {
-            *page_view.entity_ids.add(self.current_entity_index)
-        };
+            self.current_page_iter = ComponentPageIter::new(*page_view);
 
-        let ptrs = T::add_to_ptrs(&page_view.ptrs, self.current_entity_index);
-        let result = T::ptrs_to_refs(ptrs);
-
-        self.current_entity_index += 1;
-        if self.current_entity_index >= page_view.entity_count {
-            self.current_page_index += 1;
-            self.current_entity_index = 0;
+            return self.current_page_iter.next();
         }
 
-        return Some(result);
+        self.current_page_iter = ComponentPageIter::empty();
+        return None;
     }
 }
 
@@ -144,11 +141,11 @@ impl<'a, T: ComponentQueryAccess> ExactSizeIterator for ComponentsQueryIter<'a, 
 
 impl<'a, T: ComponentQueryAccess> ComponentsQueryIter<'a, T> {
     pub fn with_entities(self) -> WithEntitiesIter<'a, T> {
-        let entities_versions = self.versions;
+        let entities_versions = self.store.entities_container.entity_versions();
 
         WithEntitiesIter {
             source_iter: self,
-            entities_versions: entities_versions,
+            entities_versions,
         }
     }
 }
@@ -158,7 +155,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.source_iter.next().map(|result| unsafe {
-            let id = self.source_iter.current_entity_id;
+            let id = self.source_iter.current_page_iter.current_entity_id();
             let version = *self.entities_versions.add(id as usize);
 
             return (Entity { id, version }, result);
