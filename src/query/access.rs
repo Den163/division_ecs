@@ -21,7 +21,7 @@ pub struct ReadWriteAccess<TRead: ComponentTuple, TWrite: ComponentTuple> {
 pub trait ComponentQueryAccess {
     type AccessOutput<'a>;
     type OffsetTuple: Default + Copy;
-    type PtrTuple;
+    type PtrTuple: Copy;
 
     fn is_archetype_include_types(archetype: &Archetype) -> bool;
 

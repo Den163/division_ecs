@@ -1,23 +1,22 @@
 use crate::{
-    archetype_data_page::ArchetypeDataPage,
     component_tuple::ComponentTuple,
     query::access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
     Entity, Store,
 };
 
-use super::component_page_iter::ComponentPageIter;
+use super::{component_page_iter::ComponentPageIter, component_page_iter_view::ComponentPageIterView};
 
 pub type ComponentReadWriteQuery<R, W> = ComponentQuery<ReadWriteAccess<R, W>>;
 pub type ComponentReadOnlyQuery<R> = ComponentQuery<ReadonlyAccess<R>>;
 pub type ComponentWriteQuery<W> = ComponentQuery<WriteAccess<W>>;
 
 pub struct ComponentQuery<T: ComponentQueryAccess> {
-    page_views: Vec<PageIterView<T>>,
+    page_views: Vec<ComponentPageIterView<T>>,
 }
 
 pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
     store: &'a Store,
-    page_views: &'a [PageIterView<T>],
+    page_views: &'a [ComponentPageIterView<T>],
     current_page_iter: ComponentPageIter<'a, T>,
 
     current_page_index: usize,
@@ -27,11 +26,6 @@ pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
     source_iter: ComponentsQueryIter<'a, T>,
     entities_versions: *const u32,
-}
-
-pub(crate) struct PageIterView<T: ComponentQueryAccess> {
-    page: *const ArchetypeDataPage,
-    component_offsets: T::OffsetTuple,
 }
 
 pub fn readonly<R: ComponentTuple>() -> ComponentQuery<ReadonlyAccess<R>> {
@@ -87,20 +81,19 @@ impl Store {
                     continue;
                 }
 
-                query.page_views.push(PageIterView {
-                    page,
-                    component_offsets,
+                query.page_views.push(ComponentPageIterView {
+                    ptrs: T::get_ptrs(page, &component_offsets),
+                    entity_count: page.entity_count(),
+                    entity_ids: unsafe { page.entity_id_ptrs() }
                 });
                 queried_entities_count += page_entities_count;
             }
         }
 
         let page_iter = if query.page_views.len() > 0 {
-            let first_page = &query.page_views[0];
+            let page_view = query.page_views[0];
 
-            unsafe {
-                ComponentPageIter::new(&*first_page.page, &first_page.component_offsets)
-            }
+            ComponentPageIter::new(page_view)
         } else {
             ComponentPageIter::empty()
         };
@@ -130,9 +123,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
             let page_view =
                 unsafe { self.page_views.get_unchecked(self.current_page_index) };
 
-            self.current_page_iter = unsafe {
-                ComponentPageIter::new(&*page_view.page, &page_view.component_offsets)
-            };
+            self.current_page_iter = ComponentPageIter::new(*page_view);
 
             return self.current_page_iter.next();
         }

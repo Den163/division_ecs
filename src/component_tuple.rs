@@ -7,8 +7,8 @@ use crate::{
 
 pub trait ComponentTuple {
     type OffsetTuple: Default + Copy;
-    type PtrTuple;
-    type MutPtrTuple;
+    type PtrTuple: Copy;
+    type MutPtrTuple: Copy;
     type RefTuple<'a>;
     type MutRefTuple<'a>;
 
