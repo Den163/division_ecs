@@ -124,7 +124,7 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
         if let Some(val) = current_iter.next() {
             return Some(val);
         }
-        
+
         self.current_page_index += 1;
         if self.current_page_index < self.page_views.len() {
             let page_view =
@@ -135,10 +135,10 @@ impl<'a, T: ComponentQueryAccess> Iterator for ComponentsQueryIter<'a, T> {
             };
 
             return self.current_page_iter.next();
-        } else {
-            self.current_page_iter = ComponentPageIter::empty();
-            return None;
         }
+
+        self.current_page_iter = ComponentPageIter::empty();
+        return None;
     }
 }
 

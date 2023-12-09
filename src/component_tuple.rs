@@ -7,6 +7,8 @@ use crate::{
 
 pub trait ComponentTuple {
     type OffsetTuple: Default + Copy;
+    type PtrTuple;
+    type MutPtrTuple;
     type RefTuple<'a>;
     type MutRefTuple<'a>;
 
@@ -51,6 +53,8 @@ macro_rules! components_tuple_impl {
         #[allow(unused_parens)]
         impl<$($T: 'static + Component),*> ComponentTuple for ($($T),*) {
             type OffsetTuple = ($(components_tuple_impl!(@type_to_usize, $T)),*);
+            type PtrTuple = ($(*const $T),*);
+            type MutPtrTuple = ($(*mut $T),*);
             type RefTuple<'a> = ($(&'a $T),*);
             type MutRefTuple<'a> = ($(&'a mut $T),*);
 
