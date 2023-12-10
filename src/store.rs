@@ -3,15 +3,16 @@ use crate::{
     archetype_data_page_view::ArchetypeDataPageView,
     archetypes_container::ArchetypesContainer, bitvec_utils,
     component_tuple::ComponentTuple, entities_container::EntitiesContainer,
-    entity_in_archetype::EntityInArchetype, mem_utils, ArchetypeBuilder, Entity,
+    entity_in_archetype::EntityInArchetype, mem_utils, tag_container::TagContainer,
+    ArchetypeBuilder, Entity, derived_traits::Tag,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
 
-#[derive(Debug)]
 pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
+    pub(crate) tag_container: TagContainer,
 
     entity_to_page: *mut u32,
     entity_to_index_in_page: *mut u32,
@@ -27,6 +28,7 @@ impl Store {
         Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
+            tag_container: TagContainer::new(capacity),
 
             entity_has_archetype_bit_vec: unsafe { bitvec_utils::alloc(capacity) },
             entity_to_index_in_page: unsafe { mem_utils::alloc_zeroed(capacity) },
@@ -66,6 +68,18 @@ impl Store {
         entity
     }
 
+    pub fn add_tag<T: Tag + 'static>(&mut self, entity: Entity) {
+        self.tag_container.add_tag::<T>(entity.id);
+    }
+
+    pub fn remove_tag<T: Tag + 'static>(&mut self, entity: Entity) {
+        self.tag_container.remove_tag::<T>(entity.id);
+    }
+
+    pub fn has_tag<T: Tag + 'static>(&mut self, entity: Entity) -> bool {
+        self.tag_container.has_tag::<T>(entity.id)
+    }
+
     fn register_new_entity(&mut self) -> Entity {
         let creation = self.entities_container.create_entity();
         if creation.container_was_grow() {
@@ -76,17 +90,18 @@ impl Store {
     }
 
     pub fn destroy_entity(&mut self, entity: Entity) {
-        // TODO: add error
+        let entity_id = entity.id;
         let entity_in_arch = unsafe {
             EntityInArchetype {
-                page_index: self.get_page_index_unchecked(entity.id),
-                index_in_page: self.get_index_in_page_unchecked(entity.id),
+                page_index: self.get_page_index_unchecked(entity_id),
+                index_in_page: self.get_index_in_page_unchecked(entity_id),
             }
         };
 
         self.swap_remove_internal(entity_in_arch);
 
-        self.entities_container.destroy_entity(entity)
+        self.entities_container.destroy_entity(entity);
+        self.tag_container.remove_all_tags_for_entity(entity_id);
     }
 
     pub fn add_components<T: ComponentTuple>(&mut self, entity: Entity, components: T) {
@@ -296,6 +311,8 @@ impl Store {
                 new_capacity,
             );
         };
+
+        self.tag_container.grow(new_capacity);
     }
 
     #[inline(always)]
