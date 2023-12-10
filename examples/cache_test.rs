@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use division_ecs::{
     query::component, ArchetypeBuilder, Component, ComponentReadOnlyQuery, Store,
 };
@@ -46,15 +48,20 @@ pub fn main() {
         populate_ecs(&mut registry, &aos_data);
     }
 
+    let begin = Instant::now();
     let aos_result = iterate_oop(&aos_data);
-    println!("Array of structs result: {aos_result}");
+    let delta_time = Instant::now() - begin;
+
+    println!("Array of structs result: {aos_result}. With time: {delta_time:?}");
 
     let mut query = component::readonly();
 
     warmup_ecs(&registry, &mut query);
 
+    let begin = Instant::now();
     let ecs_result = iterate_ecs(&registry, &mut query);
-    println!("Ecs result: {ecs_result}");
+    let delta_time = Instant::now() - begin;
+    println!("Ecs result: {ecs_result}. With time: {delta_time:?}");
 
     let last_w = aos_data[ENTITIES_COUNT - 1].dirty_data.w;
     println!("Last dirty data w: {last_w}");

@@ -24,7 +24,7 @@ const ENTITY_COUNT: usize = 2_000_000;
 
 fn main() {
     let mut store = Store::new();
-    
+
     for i in 0..ENTITY_COUNT {
         let e = store.create_entity();
         store.add_components(
@@ -45,11 +45,11 @@ fn main() {
 
         if i % 10 != 0 {
             store.add_tag::<TestTag>(e);
-        } 
+        }
     }
 
     let mut query = query::component::readonly::<(TestComponent1, TestComponent2)>();
-
+    
     let mut result = 0.;
     let begin = Instant::now();
 
