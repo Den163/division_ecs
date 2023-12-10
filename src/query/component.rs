@@ -1,10 +1,14 @@
 use crate::{
+    bitvec_utils,
     component_tuple::ComponentTuple,
     query::access::{ComponentQueryAccess, ReadWriteAccess, ReadonlyAccess, WriteAccess},
-    Entity, Store,
+    Entity, Store, Tag,
 };
 
-use super::{component_page_iter::ComponentPageIter, component_page_iter_view::ComponentPageIterView};
+use super::{
+    component_page_iter::ComponentPageIter,
+    component_page_iter_view::ComponentPageIterView,
+};
 
 pub type ComponentReadWriteQuery<R, W> = ComponentQuery<ReadWriteAccess<R, W>>;
 pub type ComponentReadOnlyQuery<R> = ComponentQuery<ReadonlyAccess<R>>;
@@ -26,6 +30,11 @@ pub struct ComponentsQueryIter<'a, T: ComponentQueryAccess> {
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
     source_iter: ComponentsQueryIter<'a, T>,
     entities_versions: *const u32,
+}
+
+pub struct FilterTagIter<'a, T: ComponentQueryAccess> {
+    source_iter: WithEntitiesIter<'a, T>,
+    entity_to_has_tag: *const u32,
 }
 
 pub fn readonly<R: ComponentTuple>() -> ComponentQuery<ReadonlyAccess<R>> {
@@ -84,7 +93,7 @@ impl Store {
                 query.page_views.push(ComponentPageIterView {
                     ptrs: T::get_ptrs(page, &component_offsets),
                     entity_count: page.entity_count(),
-                    entity_ids: unsafe { page.entity_id_ptrs() }
+                    entity_ids: unsafe { page.entity_id_ptrs() },
                 });
                 queried_entities_count += page_entities_count;
             }
@@ -159,6 +168,32 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
             let version = *self.entities_versions.add(id as usize);
 
             return (Entity { id, version }, result);
+        })
+    }
+}
+
+impl<'a, Q: ComponentQueryAccess> WithEntitiesIter<'a, Q> {
+    pub fn filter_tag<T: Tag + 'static>(self) -> FilterTagIter<'a, Q> {
+        let tag_container = &self.source_iter.store.tag_container;
+        let entity_to_has_tag = tag_container.has_tag_bitvec::<T>();
+
+        FilterTagIter {
+            source_iter: self,
+            entity_to_has_tag,
+        }
+    }
+}
+
+impl<'a, Q: ComponentQueryAccess> Iterator for FilterTagIter<'a, Q> {
+    type Item = (Entity, Q::AccessOutput<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.source_iter.next().and_then(|(e, o)| unsafe {
+            if bitvec_utils::is_bit_on(self.entity_to_has_tag, e.id as usize) {
+                Some((e, o))
+            } else {
+                self.next()
+            }
         })
     }
 }

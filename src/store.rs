@@ -76,7 +76,7 @@ impl Store {
         self.tag_container.remove_tag::<T>(entity.id);
     }
 
-    pub fn has_tag<T: Tag + 'static>(&mut self, entity: Entity) -> bool {
+    pub fn has_tag<T: Tag + 'static>(&self, entity: Entity) -> bool {
         self.tag_container.has_tag::<T>(entity.id)
     }
 

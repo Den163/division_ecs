@@ -17,6 +17,18 @@ impl TagContainer {
         }
     }
 
+    pub fn has_tag_bitvec<T: Tag + 'static>(&self) -> *const u32 {
+        let type_id = TypeId::of::<T>();
+        let tag_index = match self.tag_ids.binary_search(&type_id) {
+            Ok(i) => i,
+            Err(_) => panic!("Failed to find tag with id: {type_id:?}")
+        };
+
+        unsafe {
+            *self.entity_id_to_has_tag_bitvecs.get_unchecked(tag_index)
+        }
+    }
+
     pub fn add_tag<T: Tag + 'static>(&mut self, entity_id: u32) {
         let type_id = TypeId::of::<T>();
 
@@ -70,9 +82,10 @@ impl TagContainer {
     }
 
     pub fn grow(&mut self, new_capacity: usize) {
-        for &mut bitvec in &mut self.entity_id_to_has_tag_bitvecs {
+        for bitvec in &mut self.entity_id_to_has_tag_bitvecs {
             unsafe {
-                bitvec_utils::realloc(bitvec, self.entity_capacity, new_capacity);
+                *bitvec = 
+                    bitvec_utils::realloc(*bitvec, self.entity_capacity, new_capacity);
             }
         }
 
