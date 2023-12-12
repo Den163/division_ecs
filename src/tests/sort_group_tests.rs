@@ -140,5 +140,37 @@ mod tests {
 
         assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), Some(e2));
         assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), Some(e2));
+
+        store.remove_entity_order_by::<TestGroup>(e2);
+
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e0), None);
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), None);
+
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e1), None);
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
+        
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), None);
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e2), None);
+
+        assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), None);
+        assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), None);
+    }
+
+    #[test]
+    fn after_entity_destroy_order_is_removed_too() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e0);
+        store.add_entity_order_by::<TestGroup>(e1);
+        store.add_entity_order_by::<TestGroup>(e2);
+
+        store.destroy_entity(e1);
+
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e2));
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), Some(e0));
     }
 }

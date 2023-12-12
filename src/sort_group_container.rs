@@ -80,36 +80,7 @@ impl SortGroupContainer {
             Ok(i) => i,
         };
 
-        unsafe {
-            let SortGroupInfo {
-                forward_links,
-                backward_links,
-                head,
-                tail,
-            } = self.get_sort_group_info_unchecked_mut(group_index);
-
-            let fwd = &mut *forward_links.add(entity_id as usize);
-            let bwd = &mut *backward_links.add(entity_id as usize);
-
-            if *fwd != Entity::NULL_ID {
-                *backward_links.add(*fwd as usize) = *bwd;
-            }
-
-            if *bwd != Entity::NULL_ID {
-                *forward_links.add(*bwd as usize) = *fwd;
-            }
-
-            if *head == entity_id {
-                *head = *fwd;
-            }
-
-            if *tail == entity_id {
-                *tail = *bwd;
-            }
-
-            *bwd = Entity::NULL_ID;
-            *fwd = Entity::NULL_ID;
-        }
+        self.remove_entity_order_by_internal(group_index, entity_id);
     }
 
     #[inline]
@@ -145,6 +116,12 @@ impl SortGroupContainer {
         }
 
         self.entity_capacity = new_capacity;
+    }
+
+    pub fn remove_all_orders_for_id(&mut self, id: u32) {
+        for group_index in 0..self.group_ids.len() {
+            self.remove_entity_order_by_internal(group_index, id);
+        }
     }
 
     #[inline]
@@ -212,7 +189,10 @@ impl SortGroupContainer {
     }
 
     #[inline]
-    unsafe fn get_sort_group_info_unchecked_mut(&mut self, group_index: usize) -> SortGroupInfo {
+    unsafe fn get_sort_group_info_unchecked_mut(
+        &mut self,
+        group_index: usize,
+    ) -> SortGroupInfo {
         SortGroupInfo {
             head: self.group_index_to_head.get_unchecked_mut(group_index),
             tail: self.group_index_to_tail.get_unchecked_mut(group_index),
@@ -224,6 +204,39 @@ impl SortGroupContainer {
                 .get_unchecked_mut(group_index),
         }
     }
+
+    fn remove_entity_order_by_internal(&mut self, group_index: usize, entity_id: u32) {
+        unsafe {
+            let SortGroupInfo {
+                forward_links,
+                backward_links,
+                head,
+                tail,
+            } = self.get_sort_group_info_unchecked_mut(group_index);
+
+            let fwd = &mut *forward_links.add(entity_id as usize);
+            let bwd = &mut *backward_links.add(entity_id as usize);
+
+            if *fwd != Entity::NULL_ID {
+                *backward_links.add(*fwd as usize) = *bwd;
+            }
+
+            if *bwd != Entity::NULL_ID {
+                *forward_links.add(*bwd as usize) = *fwd;
+            }
+
+            if *head == entity_id {
+                *head = *fwd;
+            }
+
+            if *tail == entity_id {
+                *tail = *bwd;
+            }
+
+            *bwd = Entity::NULL_ID;
+            *fwd = Entity::NULL_ID;
+        }
+    }
 }
 
 impl Store {
@@ -232,7 +245,8 @@ impl Store {
     }
 
     pub fn remove_entity_order_by<T: Tag>(&mut self, entity: Entity) {
-        self.sort_group_container.remove_id_ordered_by::<T>(entity.id);
+        self.sort_group_container
+            .remove_id_ordered_by::<T>(entity.id);
     }
 
     pub fn get_next_entity_ordered_by<T: Tag>(&self, entity: Entity) -> Option<Entity> {

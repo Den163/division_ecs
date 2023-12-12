@@ -3,8 +3,9 @@ use crate::{
     archetype_data_page_view::ArchetypeDataPageView,
     archetypes_container::ArchetypesContainer, bitvec_utils,
     component_tuple::ComponentTuple, entities_container::EntitiesContainer,
-    entity_in_archetype::EntityInArchetype, sort_group_container::SortGroupContainer, mem_utils,
-    tag_container::TagContainer, ArchetypeBuilder, Entity,
+    entity_in_archetype::EntityInArchetype, mem_utils,
+    sort_group_container::SortGroupContainer, tag_container::TagContainer,
+    ArchetypeBuilder, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -83,17 +84,23 @@ impl Store {
 
     pub fn destroy_entity(&mut self, entity: Entity) {
         let entity_id = entity.id;
-        let entity_in_arch = unsafe {
-            EntityInArchetype {
-                page_index: self.get_page_index_unchecked(entity_id),
-                index_in_page: self.get_index_in_page_unchecked(entity_id),
-            }
-        };
+        let has_archetype = unsafe { self.has_archetype_unchecked(entity.id) };
 
-        self.swap_remove_internal(entity_in_arch);
+        if has_archetype {
+            let entity_in_arch = unsafe {
+                EntityInArchetype {
+                    page_index: self.get_page_index_unchecked(entity_id),
+                    index_in_page: self.get_index_in_page_unchecked(entity_id),
+                }
+            };
+
+            self.swap_remove_internal(entity_in_arch);
+        }
 
         self.entities_container.destroy_entity(entity);
         self.tag_container.remove_all_tags_for_entity(entity_id);
+        self.sort_group_container
+            .remove_all_orders_for_id(entity_id);
     }
 
     pub fn add_components<T: ComponentTuple>(&mut self, entity: Entity, components: T) {
