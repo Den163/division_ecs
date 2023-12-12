@@ -119,7 +119,10 @@ mod tests {
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
 
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e2));
-        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), Some(e0));
+        assert_eq!(
+            store.get_previous_entity_ordered_by::<TestGroup>(e2),
+            Some(e0)
+        );
 
         assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), Some(e0));
         assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), Some(e2));
@@ -134,7 +137,7 @@ mod tests {
 
         assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e1), None);
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
-        
+
         assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), None);
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e2), None);
 
@@ -148,7 +151,7 @@ mod tests {
 
         assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e1), None);
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
-        
+
         assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), None);
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e2), None);
 
@@ -171,6 +174,172 @@ mod tests {
         store.destroy_entity(e1);
 
         assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e2));
+        assert_eq!(
+            store.get_previous_entity_ordered_by::<TestGroup>(e2),
+            Some(e0)
+        );
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic]
+    fn add_entity_order_by_panics_on_circular_references() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e0);
+        store.add_entity_order_by::<TestGroup>(e1);
+        store.add_entity_order_by::<TestGroup>(e2);
+        store.add_entity_order_by::<TestGroup>(e1);
+    }
+
+    #[test]
+    fn add_entity_next_to_order_after_single_call_expected() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e1, e0);
+
+        assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), Some(e0));
+        assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), Some(e1));
+
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e1));
+        assert_eq!(
+            store.get_previous_entity_ordered_by::<TestGroup>(e1),
+            Some(e0)
+        );
+
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e0), None);
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
+    }
+
+    #[test]
+    fn add_entity_next_to_order_after_sequential_multiple_times_as_expected() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e1, e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e2, e1);
+
+        assert_sequential(&store, e0, e1, e2);
+    }
+
+    #[test]
+    fn add_entity_next_to_order_after_unsequential_multiple_time_as_expected() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        // e0, e2, e1
+        store.add_entity_order_by::<TestGroup>(e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e1, e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e2, e0);
+
+        assert_unsequential(&store, e0, e1, e2);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic]
+    fn add_entity_next_to_order_panics_on_circular_reference() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e1, e0);
+        store.add_entity_next_to_order_by::<TestGroup>(e2, e1);
+        store.add_entity_next_to_order_by::<TestGroup>(e2, e0);
+    }
+
+    #[test]
+    fn add_entity_previous_to_order_after_first_add_as_expected() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e1);
+        store.add_entity_previous_to_order_by::<TestGroup>(e0, e1);
+
+        assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), Some(e0));
+        assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), Some(e1));
+
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e1));
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
+
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e0), None);
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e1), Some(e0));
+    }
+
+    #[test]
+    fn add_entity_previous_to_order_after_sequential_multiple_calls_as_expected() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        store.add_entity_order_by::<TestGroup>(e2);
+        store.add_entity_previous_to_order_by::<TestGroup>(e1, e2);
+        store.add_entity_previous_to_order_by::<TestGroup>(e0, e1);
+
+        assert_sequential(&store, e0, e1, e2);
+    }
+
+    #[test]
+    fn add_entity_previous_to_order_after_unsequential_multiple_calls_as_expected() {
+        let mut store = Store::new();
+
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+        let e2 = store.create_entity();
+
+        // e0, e2, e1
+        store.add_entity_order_by::<TestGroup>(e1);
+        store.add_entity_previous_to_order_by::<TestGroup>(e2, e1);
+        store.add_entity_previous_to_order_by::<TestGroup>(e0, e2);
+
+        assert_unsequential(&store, e0, e1, e2);
+    }
+
+    fn assert_unsequential(store: &Store, e0: Entity, e1: Entity, e2: Entity) {
+        assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), Some(e0));
+        assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), Some(e1));
+
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e2));
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e2), Some(e1));
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), None);
+
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e0), None);
         assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), Some(e0));
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e1), Some(e2));
+    }
+
+    fn assert_sequential(store: &Store, e0: Entity, e1: Entity, e2: Entity) {
+        assert_eq!(store.get_first_entity_ordered_by::<TestGroup>(), Some(e0));
+        assert_eq!(store.get_last_entity_ordered_by::<TestGroup>(), Some(e2));
+
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e0), Some(e1));
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e1), Some(e2));
+        assert_eq!(store.get_next_entity_ordered_by::<TestGroup>(e2), None);
+
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e0), None);
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e1), Some(e0));
+        assert_eq!(store.get_previous_entity_ordered_by::<TestGroup>(e2), Some(e1));
     }
 }
