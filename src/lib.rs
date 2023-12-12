@@ -13,6 +13,7 @@ mod component_type;
 mod entities_container;
 mod entity;
 mod entity_in_archetype;
+mod sort_group_container;
 mod mem_utils;
 mod resource_store;
 mod store;

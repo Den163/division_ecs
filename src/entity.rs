@@ -5,6 +5,8 @@ pub struct Entity {
 }
 
 impl Entity {
+    pub const NULL_ID: u32 = u32::MAX;
+
     #[inline(always)]
     pub fn id(&self) -> u32 {
         self.id
@@ -18,7 +20,7 @@ impl Entity {
     #[inline(always)]
     pub fn null() -> Entity {
         Entity {
-            id: u32::MAX,
+            id: Self::NULL_ID,
             version: 0,
         }
     }

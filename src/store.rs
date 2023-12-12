@@ -3,8 +3,8 @@ use crate::{
     archetype_data_page_view::ArchetypeDataPageView,
     archetypes_container::ArchetypesContainer, bitvec_utils,
     component_tuple::ComponentTuple, entities_container::EntitiesContainer,
-    entity_in_archetype::EntityInArchetype, mem_utils, tag_container::TagContainer,
-    ArchetypeBuilder, Entity, derived_traits::Tag,
+    entity_in_archetype::EntityInArchetype, sort_group_container::SortGroupContainer, mem_utils,
+    tag_container::TagContainer, ArchetypeBuilder, Entity,
 };
 
 const ENTITIES_DEFAULT_CAPACITY: usize = 10;
@@ -13,6 +13,7 @@ pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
     pub(crate) tag_container: TagContainer,
+    pub(crate) sort_group_container: SortGroupContainer,
 
     entity_to_page: *mut u32,
     entity_to_index_in_page: *mut u32,
@@ -25,10 +26,13 @@ impl Store {
     }
 
     pub fn with_capacity(capacity: usize) -> Store {
+        debug_assert!(capacity > 0, "Can't initialize empty store");
+
         Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
             tag_container: TagContainer::new(capacity),
+            sort_group_container: SortGroupContainer::new(capacity),
 
             entity_has_archetype_bit_vec: unsafe { bitvec_utils::alloc(capacity) },
             entity_to_index_in_page: unsafe { mem_utils::alloc_zeroed(capacity) },
@@ -66,18 +70,6 @@ impl Store {
         }
 
         entity
-    }
-
-    pub fn add_tag<T: Tag + 'static>(&mut self, entity: Entity) {
-        self.tag_container.add_tag::<T>(entity.id);
-    }
-
-    pub fn remove_tag<T: Tag + 'static>(&mut self, entity: Entity) {
-        self.tag_container.remove_tag::<T>(entity.id);
-    }
-
-    pub fn has_tag<T: Tag + 'static>(&self, entity: Entity) -> bool {
-        self.tag_container.has_tag::<T>(entity.id)
     }
 
     fn register_new_entity(&mut self) -> Entity {
@@ -313,6 +305,15 @@ impl Store {
         };
 
         self.tag_container.grow(new_capacity);
+        self.sort_group_container.grow(new_capacity);
+    }
+
+    #[inline(always)]
+    pub(crate) unsafe fn get_entity_by_id_unchecked(&self, id: u32) -> Entity {
+        Entity {
+            id,
+            version: *self.entities_container.entity_versions().add(id as usize),
+        }
     }
 
     #[inline(always)]

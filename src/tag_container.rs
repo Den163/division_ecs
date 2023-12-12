@@ -1,6 +1,6 @@
 use std::any::TypeId;
 
-use crate::{bitvec_utils, derived_traits::Tag};
+use crate::{bitvec_utils, derived_traits::Tag, Store, Entity};
 
 pub(crate) struct TagContainer {
     tag_ids: Vec<TypeId>,
@@ -90,6 +90,23 @@ impl TagContainer {
         }
 
         self.entity_capacity = new_capacity;
+    }
+}
+
+impl Store {
+    #[inline(always)]
+    pub fn add_tag<T: Tag + 'static>(&mut self, entity: Entity) {
+        self.tag_container.add_tag::<T>(entity.id);
+    }
+
+    #[inline(always)]
+    pub fn remove_tag<T: Tag + 'static>(&mut self, entity: Entity) {
+        self.tag_container.remove_tag::<T>(entity.id);
+    }
+
+    #[inline(always)]
+    pub fn has_tag<T: Tag + 'static>(&self, entity: Entity) -> bool {
+        self.tag_container.has_tag::<T>(entity.id)
     }
 }
 
