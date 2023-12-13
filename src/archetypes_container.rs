@@ -160,6 +160,14 @@ impl ArchetypesContainer {
     }
 
     #[inline]
+    pub unsafe fn get_page_by_index_unchecked(
+        &self,
+        page_index: u32,
+    ) -> &ArchetypeDataPage {
+        self.pages.get_unchecked(page_index as usize)
+    }
+
+    #[inline]
     pub fn get_archetype_page_indices(&self, archetype_index: usize) -> &[usize] {
         &self.archetype_to_pages[archetype_index].pages
     }

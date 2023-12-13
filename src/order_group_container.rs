@@ -2,7 +2,7 @@ use std::any::TypeId;
 
 use crate::{mem_utils, Entity, Store, Tag};
 
-pub struct SortGroupContainer {
+pub struct OrderGroupContainer {
     group_ids: Vec<TypeId>,
     group_index_to_forward_links: Vec<*mut u32>,
     group_index_to_backward_links: Vec<*mut u32>,
@@ -11,14 +11,14 @@ pub struct SortGroupContainer {
     entity_capacity: usize,
 }
 
-struct SortGroupInfo<'a> {
+struct OrderGroupInfoMut<'a> {
     head: &'a mut u32,
     tail: &'a mut u32,
     forward_links: *mut u32,
     backward_links: *mut u32,
 }
 
-impl SortGroupContainer {
+impl OrderGroupContainer {
     const NULL_ID_BYTE: u8 = Entity::NULL_ID as u8;
 
     pub fn new(entity_capacity: usize) -> Self {
@@ -36,12 +36,12 @@ impl SortGroupContainer {
     pub fn add_id_ordered_by<T: Tag>(&mut self, entity_id: u32) {
         let group_index = self.reserve_group::<T>();
 
-        let SortGroupInfo {
+        let OrderGroupInfoMut {
             backward_links,
             forward_links,
             head,
             tail,
-        } = unsafe { self.get_sort_group_info_unchecked_mut(group_index) };
+        } = unsafe { self.get_order_group_info_unchecked_mut(group_index) };
 
         if *head == Entity::NULL_ID {
             *head = entity_id;
@@ -65,12 +65,12 @@ impl SortGroupContainer {
     pub fn add_id_next_to_ordered_by<T: Tag>(&mut self, entity_id: u32, next_to_id: u32) {
         let group_index = self.reserve_group::<T>();
 
-        let SortGroupInfo {
+        let OrderGroupInfoMut {
             backward_links,
             forward_links,
             tail,
             ..
-        } = unsafe { self.get_sort_group_info_unchecked_mut(group_index) };
+        } = unsafe { self.get_order_group_info_unchecked_mut(group_index) };
 
         unsafe {
             let fwd_entity_id = &mut *forward_links.add(entity_id as usize);
@@ -101,12 +101,12 @@ impl SortGroupContainer {
     ) {
         let group_index = self.reserve_group::<T>();
 
-        let SortGroupInfo {
+        let OrderGroupInfoMut {
             backward_links,
             forward_links,
             head,
             ..
-        } = unsafe { self.get_sort_group_info_unchecked_mut(group_index) };
+        } = unsafe { self.get_order_group_info_unchecked_mut(group_index) };
 
         unsafe {
             let fwd_entity_id = &mut *forward_links.add(entity_id as usize);
@@ -269,7 +269,7 @@ impl SortGroupContainer {
     }
 
     #[inline]
-    fn get_group_index<T: Tag>(&self) -> Option<usize> {
+    pub(crate) fn get_group_index<T: Tag>(&self) -> Option<usize> {
         let link_index = TypeId::of::<T>();
 
         match self.group_ids.binary_search(&link_index) {
@@ -279,11 +279,21 @@ impl SortGroupContainer {
     }
 
     #[inline]
-    unsafe fn get_sort_group_info_unchecked_mut(
+    pub(crate) unsafe fn get_first_id_in_group_unchecked(&self, group_index: usize) -> u32 {
+        *self.group_index_to_head.get_unchecked(group_index)
+    }
+
+    #[inline]
+    pub(crate) unsafe fn get_id_to_next_in_group_map_unchecked(&self, group_index: usize) -> *const u32 {
+        *self.group_index_to_forward_links.get_unchecked(group_index)
+    }
+
+    #[inline]
+    unsafe fn get_order_group_info_unchecked_mut(
         &mut self,
         group_index: usize,
-    ) -> SortGroupInfo {
-        SortGroupInfo {
+    ) -> OrderGroupInfoMut {
+        OrderGroupInfoMut {
             head: self.group_index_to_head.get_unchecked_mut(group_index),
             tail: self.group_index_to_tail.get_unchecked_mut(group_index),
             backward_links: *self
@@ -297,12 +307,12 @@ impl SortGroupContainer {
 
     fn remove_entity_order_by_internal(&mut self, group_index: usize, entity_id: u32) {
         unsafe {
-            let SortGroupInfo {
+            let OrderGroupInfoMut {
                 forward_links,
                 backward_links,
                 head,
                 tail,
-            } = self.get_sort_group_info_unchecked_mut(group_index);
+            } = self.get_order_group_info_unchecked_mut(group_index);
 
             let fwd = &mut *forward_links.add(entity_id as usize);
             let bwd = &mut *backward_links.add(entity_id as usize);
@@ -331,7 +341,7 @@ impl SortGroupContainer {
 
 impl Store {
     pub fn add_entity_order_by<T: Tag>(&mut self, entity: Entity) {
-        self.sort_group_container.add_id_ordered_by::<T>(entity.id);
+        self.order_group_container.add_id_ordered_by::<T>(entity.id);
     }
 
     pub fn add_entity_next_to_order_by<T: Tag>(
@@ -339,7 +349,7 @@ impl Store {
         entity: Entity,
         next_to_entity: Entity,
     ) {
-        self.sort_group_container
+        self.order_group_container
             .add_id_next_to_ordered_by::<T>(entity.id, next_to_entity.id)
     }
 
@@ -348,17 +358,17 @@ impl Store {
         entity: Entity,
         previous_to_entity: Entity,
     ) {
-        self.sort_group_container
+        self.order_group_container
             .add_id_previous_to_ordered_by::<T>(entity.id, previous_to_entity.id);
     }
 
     pub fn remove_entity_order_by<T: Tag>(&mut self, entity: Entity) {
-        self.sort_group_container
+        self.order_group_container
             .remove_id_ordered_by::<T>(entity.id);
     }
 
     pub fn get_next_entity_ordered_by<T: Tag>(&self, entity: Entity) -> Option<Entity> {
-        self.sort_group_container
+        self.order_group_container
             .get_next_id_ordered_by::<T>(entity.id)
             .map(|id| unsafe { self.get_entity_by_id_unchecked(id) })
     }
@@ -367,25 +377,25 @@ impl Store {
         &self,
         entity: Entity,
     ) -> Option<Entity> {
-        self.sort_group_container
+        self.order_group_container
             .get_previous_id_ordered_by::<T>(entity.id)
             .map(|id| unsafe { self.get_entity_by_id_unchecked(id) })
     }
 
     pub fn get_first_entity_ordered_by<T: Tag>(&self) -> Option<Entity> {
-        self.sort_group_container
+        self.order_group_container
             .get_head_id::<T>()
             .map(|id| unsafe { self.get_entity_by_id_unchecked(id) })
     }
 
     pub fn get_last_entity_ordered_by<T: Tag>(&self) -> Option<Entity> {
-        self.sort_group_container
+        self.order_group_container
             .get_tail_id::<T>()
             .map(|id| unsafe { self.get_entity_by_id_unchecked(id) })
     }
 }
 
-impl Drop for SortGroupContainer {
+impl Drop for OrderGroupContainer {
     fn drop(&mut self) {
         for (&bwd_links, &fwd_links) in std::iter::zip(
             &self.group_index_to_backward_links,

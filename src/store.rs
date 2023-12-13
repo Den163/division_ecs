@@ -4,7 +4,7 @@ use crate::{
     archetypes_container::ArchetypesContainer, bitvec_utils,
     component_tuple::ComponentTuple, entities_container::EntitiesContainer,
     entity_in_archetype::EntityInArchetype, mem_utils,
-    sort_group_container::SortGroupContainer, tag_container::TagContainer,
+    order_group_container::OrderGroupContainer, tag_container::TagContainer,
     ArchetypeBuilder, Entity,
 };
 
@@ -14,7 +14,7 @@ pub struct Store {
     pub(crate) entities_container: EntitiesContainer,
     pub(crate) archetypes_container: ArchetypesContainer,
     pub(crate) tag_container: TagContainer,
-    pub(crate) sort_group_container: SortGroupContainer,
+    pub(crate) order_group_container: OrderGroupContainer,
 
     entity_to_page: *mut u32,
     entity_to_index_in_page: *mut u32,
@@ -33,7 +33,7 @@ impl Store {
             entities_container: EntitiesContainer::new(capacity),
             archetypes_container: ArchetypesContainer::new(),
             tag_container: TagContainer::new(capacity),
-            sort_group_container: SortGroupContainer::new(capacity),
+            order_group_container: OrderGroupContainer::new(capacity),
 
             entity_has_archetype_bit_vec: unsafe { bitvec_utils::alloc(capacity) },
             entity_to_index_in_page: unsafe { mem_utils::alloc_zeroed(capacity) },
@@ -99,7 +99,7 @@ impl Store {
 
         self.entities_container.destroy_entity(entity);
         self.tag_container.remove_all_tags_for_entity(entity_id);
-        self.sort_group_container
+        self.order_group_container
             .remove_all_orders_for_id(entity_id);
     }
 
@@ -113,7 +113,8 @@ impl Store {
         let has_archetype = unsafe { self.has_archetype_unchecked(entity.id) };
 
         let entity_in_archetype = if has_archetype {
-            let entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
+            let entity_in_arch =
+                unsafe { self.get_entity_in_archetype_unchecked(entity.id) };
             let arch_index = self
                 .archetypes_container
                 .get_archetype_index_by_page(entity_in_arch.page_index as usize);
@@ -164,7 +165,8 @@ impl Store {
             return;
         }
 
-        let prev_entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
+        let prev_entity_in_arch =
+            unsafe { self.get_entity_in_archetype_unchecked(entity.id) };
         let prev_arch_index = self
             .archetypes_container
             .get_archetype_index_by_page(prev_entity_in_arch.page_index as usize);
@@ -187,7 +189,8 @@ impl Store {
         entity: Entity,
         new_arch: &Archetype,
     ) -> EntityInArchetype {
-        let prev_entity_in_arch = unsafe { self.get_entity_in_archetype(entity.id) };
+        let prev_entity_in_arch =
+            unsafe { self.get_entity_in_archetype_unchecked(entity.id) };
         let prev_arch_index = self
             .archetypes_container
             .get_archetype_index_by_page(prev_entity_in_arch.page_index as usize);
@@ -261,13 +264,6 @@ impl Store {
         )
     }
 
-    unsafe fn get_entity_in_archetype(&self, entity_id: u32) -> EntityInArchetype {
-        EntityInArchetype {
-            page_index: self.get_page_index_unchecked(entity_id),
-            index_in_page: self.get_index_in_page_unchecked(entity_id),
-        }
-    }
-
     #[inline(always)]
     unsafe fn get_page_view_unchecked(&self, entity_id: u32) -> ArchetypeDataPageView {
         let page_index = self.get_page_index_unchecked(entity_id) as usize;
@@ -312,7 +308,7 @@ impl Store {
         };
 
         self.tag_container.grow(new_capacity);
-        self.sort_group_container.grow(new_capacity);
+        self.order_group_container.grow(new_capacity);
     }
 
     #[inline(always)]
@@ -320,6 +316,17 @@ impl Store {
         Entity {
             id,
             version: *self.entities_container.entity_versions().add(id as usize),
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) unsafe fn get_entity_in_archetype_unchecked(
+        &self,
+        entity_id: u32,
+    ) -> EntityInArchetype {
+        EntityInArchetype {
+            page_index: self.get_page_index_unchecked(entity_id),
+            index_in_page: self.get_index_in_page_unchecked(entity_id),
         }
     }
 
