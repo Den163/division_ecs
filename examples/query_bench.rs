@@ -44,12 +44,13 @@ fn main() {
         );
 
         if i % 10 != 0 {
+            store.add_entity_order_by::<TestTag>(e);
             store.add_tag::<TestTag>(e);
         }
     }
 
     let mut query = query::component::readonly::<(TestComponent1, TestComponent2)>();
-    
+
     let mut result = 0.;
     let begin = Instant::now();
 
@@ -58,12 +59,31 @@ fn main() {
         .with_entities()
         .filter_tag::<TestTag>()
     {
-        result += (comp1.x as f64 * comp2.xx)
-            + (comp1.y as f64 * comp2.yy as f64)
-            + (comp1.z as f64 * comp2.zz);
+        result_func(&mut result, comp1, comp2);
     }
 
     let delta_time = Instant::now() - begin;
 
-    println!("Result: {result}. With time: {delta_time:?}");
+    println!("Query with tags: {result}. With time: {delta_time:?}");
+
+    let mut query =
+        query::ordered_component::readonly::<TestTag, (TestComponent1, TestComponent2)>();
+
+    let mut result = 0.;
+    let begin = Instant::now();
+
+    for (_, (comp1, comp2)) in store.ordered_query_iter(&mut query).with_entities() {
+        result_func(&mut result, comp1, comp2);
+    }
+
+    let delta_time = Instant::now() - begin;
+
+    println!("Query with order group: {result}. With time: {delta_time:?}");
+}
+
+#[inline]
+fn result_func(result: &mut f64, comp1: &TestComponent1, comp2: &TestComponent2) {
+    *result += (comp1.x as f64 * comp2.xx)
+        + (comp1.y as f64 * comp2.yy as f64)
+        + (comp1.z as f64 * comp2.zz);
 }
