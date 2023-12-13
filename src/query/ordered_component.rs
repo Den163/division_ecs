@@ -24,6 +24,8 @@ pub struct OrderedComponentQueryIter<'a, T: ComponentQueryAccess> {
     next_range_index: u32,
     current_index_in_page: u32,
     next_offset_from_range: u32,
+
+    len: usize
 }
 
 pub struct WithEntitiesIter<'a, T: ComponentQueryAccess> {
@@ -70,7 +72,7 @@ impl Store {
 
         let group_index = match self.order_group_container.get_group_index::<O>() {
             Some(i) => i,
-            None => return self.iter_from_query(query),
+            None => return self.iter_from_query(query, 0),
         };
 
         let id_to_next_map = unsafe {
@@ -82,6 +84,8 @@ impl Store {
             self.order_group_container
                 .get_first_id_in_group_unchecked(group_index)
         };
+
+        let mut entity_count = 0;
 
         while curr_entity != Entity::NULL_ID {
             let (curr_page_index, curr_index_in_page) = unsafe {
@@ -134,6 +138,8 @@ impl Store {
                 range_end += 1;
             }
 
+            entity_count += range_end - range_start;
+
             query.index_in_page_ranges.push(range_start..range_end);
             query
                 .range_to_page_views
@@ -142,12 +148,13 @@ impl Store {
             curr_entity = next_entity
         }
 
-        self.iter_from_query(query)
+        self.iter_from_query(query, entity_count as usize)
     }
 
     fn iter_from_query<'a, 'b: 'a, O: Tag, T: ComponentQueryAccess>(
         &'a self,
         query: &'b mut OrderedComponentQuery<O, T>,
+        len: usize,
     ) -> OrderedComponentQueryIter<'a, T> {
         OrderedComponentQueryIter {
             store: self,
@@ -157,6 +164,7 @@ impl Store {
             next_range_index: 0,
             current_index_in_page: 0,
             next_offset_from_range: 0,
+            len
         }
     }
 }
@@ -217,5 +225,11 @@ impl<'a, T: ComponentQueryAccess> Iterator for WithEntitiesIter<'a, T> {
                 components,
             )
         })
+    }
+}
+
+impl<'a, T: ComponentQueryAccess> ExactSizeIterator for OrderedComponentQueryIter<'a, T> {
+    fn len(&self) -> usize {
+        self.len
     }
 }

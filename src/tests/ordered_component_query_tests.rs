@@ -45,8 +45,11 @@ mod tests {
         let expected: Vec<TestComponent1> = expected.iter().map(|(_, c)| *c).collect();
 
         let mut query = query::ordered_component::readonly::<TestGroup, TestComponent1>();
-        let actual: Vec<TestComponent1> =
-            store.ordered_query_iter(&mut query).cloned().collect();
+        let iter = store.ordered_query_iter(&mut query);
+        let iter_len = iter.len();
+        assert_eq!(iter_len, expected.len());
+
+        let actual: Vec<TestComponent1> = iter.cloned().collect();
 
         assert_eq!(actual, expected);
     }
