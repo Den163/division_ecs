@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{type_ids, Archetype, Component, Store, ClonedExtension};
+    use crate::{type_ids, Archetype, Component, Store};
     use std::mem::MaybeUninit;
 
     impl Component for f32 {}
@@ -164,21 +164,28 @@ mod tests {
         let e0 = store.create_entity();
         let e1 = store.create_entity();
 
-        let expected0 = (TestComponent1::new(1), 15u64);
-        let expected1 = (TestComponent2::new(15), TestComponent1::new(2));
+        let expected00 = TestComponent1::new(1);
+        let expected01 = 15u64;
 
-        store.add_components(e0, expected0);
-        store.add_components(e1, expected1);
+        let expected10 = TestComponent2::new(15);
+        let expected11 = TestComponent1::new(2);
 
-        let actual0 = store
+        store.add_components(e0, expected00);
+        store.add_components(e1, expected10);
+        store.add_components(e0, expected01);
+        store.add_components(e1, expected11);
+
+        let (actual00, actual01) = store
             .get_components_refs::<(TestComponent1, u64)>(e0)
             .unwrap();
-        let actual1 = store
+        let (actual10, actual11) = store
             .get_components_refs::<(TestComponent2, TestComponent1)>(e1)
             .unwrap();
 
-        assert_eq!(actual0.cloned(), expected0);
-        assert_eq!(actual1.cloned(), expected1);
+        assert_eq!(*actual00, expected00);
+        assert_eq!(*actual01, expected01);
+        assert_eq!(*actual10, expected10);
+        assert_eq!(*actual11, expected11);
     }
 
     #[test]

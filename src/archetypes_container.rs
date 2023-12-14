@@ -195,7 +195,10 @@ impl ArchetypesContainer {
             if arch_pages.pages[i] == page_index {
                 arch_pages.pages.remove(i);
                 if arch_pages.pages.len() == 0 {
-                    self.free_archetypes.push(archetype_index);
+                    match self.free_archetypes.binary_search(&archetype_index) {
+                        Err(i) => self.free_archetypes.insert(i, archetype_index),
+                        _ => {} 
+                    }
                 }
                 break;
             }
