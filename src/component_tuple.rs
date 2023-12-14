@@ -1,8 +1,10 @@
+use std::process::Output;
+
 use paste::paste;
 
 use crate::{
-    archetype_data_page::ArchetypeDataPage, type_ids, Archetype, ArchetypeBuilder,
-    Component, archetype_layout::ArchetypeLayout,
+    archetype_data_page::ArchetypeDataPage, archetype_layout::ArchetypeLayout, type_ids,
+    Archetype, ArchetypeBuilder, Component,
 };
 
 pub trait ComponentTuple {
@@ -34,16 +36,18 @@ pub trait ComponentTuple {
         offsets: &Self::OffsetTuple,
     ) -> Self::MutRefTuple<'a>;
 
-    fn get_ptrs(
-        page: &ArchetypeDataPage, offsets: &Self::OffsetTuple
-    ) -> Self::PtrTuple;
+    fn get_ptrs(page: &ArchetypeDataPage, offsets: &Self::OffsetTuple) -> Self::PtrTuple;
 
     fn get_ptrs_mut(
-        page: &ArchetypeDataPage, offsets: &Self::OffsetTuple
+        page: &ArchetypeDataPage,
+        offsets: &Self::OffsetTuple,
     ) -> Self::MutPtrTuple;
 
     fn add_to_ptrs(ptrs: &Self::PtrTuple, entity_index: usize) -> Self::PtrTuple;
-    fn add_to_ptrs_mut(ptrs: &Self::MutPtrTuple, entity_index: usize) -> Self::MutPtrTuple;
+    fn add_to_ptrs_mut(
+        ptrs: &Self::MutPtrTuple,
+        entity_index: usize,
+    ) -> Self::MutPtrTuple;
 
     fn null_ptrs() -> Self::PtrTuple;
     fn null_ptrs_mut() -> Self::MutPtrTuple;
@@ -63,6 +67,11 @@ pub trait ComponentTuple {
     fn remove_components_from_archetype_builder(
         builder: &mut ArchetypeBuilder,
     ) -> &mut ArchetypeBuilder;
+}
+
+pub trait ClonedExtension {
+    type Output;
+    fn cloned(self) -> Self::Output;
 }
 
 macro_rules! components_tuple_impl {
@@ -144,14 +153,14 @@ macro_rules! components_tuple_impl {
 
             #[inline(always)]
             fn get_ptrs(
-                page: &ArchetypeDataPage, 
+                page: &ArchetypeDataPage,
                 ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::OffsetTuple
             ) -> Self::PtrTuple {
                 (
                     $(
                         page.get_component_data_ptr(
-                            0, 
-                            *paste!{ [<$T:lower>] }, 
+                            0,
+                            *paste!{ [<$T:lower>] },
                             std::mem::size_of::<$T>()) as *const $T
                     ),*
                 )
@@ -165,8 +174,8 @@ macro_rules! components_tuple_impl {
                 (
                     $(
                         page.get_component_data_ptr(
-                            0, 
-                            *paste!{ [<$T:lower>] }, 
+                            0,
+                            *paste!{ [<$T:lower>] },
                             std::mem::size_of::<$T>()) as *mut $T
                     ),*
                 )
@@ -174,7 +183,7 @@ macro_rules! components_tuple_impl {
 
             #[inline(always)]
             fn add_to_ptrs(
-                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::PtrTuple, 
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::PtrTuple,
                 entity_index: usize
             ) -> Self::PtrTuple {
                     unsafe {(
@@ -187,7 +196,7 @@ macro_rules! components_tuple_impl {
 
             #[inline(always)]
             fn add_to_ptrs_mut(
-                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::MutPtrTuple, 
+                ($( paste!([<$T:lower>]) ),*): &<($($T),*) as ComponentTuple>::MutPtrTuple,
                 entity_index: usize
             ) -> Self::MutPtrTuple {
                     unsafe {(
@@ -217,7 +226,7 @@ macro_rules! components_tuple_impl {
                     ),*
                 )}
             }
-            
+
             #[inline(always)]
             fn ptrs_to_refs_mut<'a>(
                 ($( paste!([<$T:lower>]) ),*): <($($T),*) as ComponentTuple>::MutPtrTuple,
@@ -240,7 +249,7 @@ macro_rules! components_tuple_impl {
                     ),*
                 );
             }
-            
+
             fn into_archetype() -> $crate::Archetype
             {
                 let components = &mut $crate::component_types!( $($T),* );
@@ -265,6 +274,22 @@ macro_rules! components_tuple_impl {
             ) -> &mut $crate::ArchetypeBuilder {
                 let components = & $crate::component_types!( $($T),* );
                 builder.exclude_component_types(components)
+            }
+
+
+        }
+
+        #[allow(unused_parens)]
+        impl<$($T: Copy),*> ClonedExtension for ($(& $T),*) {
+            type Output = ($($T),*);
+            fn cloned<'a>(self) -> Self::Output {
+                let ($( paste!([<$T:lower>]) ),*) = self;
+
+                (
+                    $(
+                        *paste!{ [<$T:lower>] }
+                    ),*
+                )
             }
         }
     };

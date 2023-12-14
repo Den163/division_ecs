@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{type_ids, Archetype, Component, Store};
+    use crate::{type_ids, Archetype, Component, Store, ClonedExtension};
     use std::mem::MaybeUninit;
 
     impl Component for f32 {}
@@ -147,7 +147,8 @@ mod tests {
         let expected1 = TestComponent1 { value: 364 };
         let expected2 = TestComponent2 { value: 31. };
 
-        store.add_components(e, (expected1, expected2));
+        store.add_components(e, expected1);
+        store.add_components(e, expected2);
 
         let (actual1, actual2) = store
             .get_components_refs::<(TestComponent1, TestComponent2)>(e)
@@ -155,6 +156,29 @@ mod tests {
 
         assert_eq!(*actual1, expected1);
         assert_eq!(*actual2, expected2);
+    }
+
+    #[test]
+    fn add_components_with_intersected_types_as_expected() {
+        let mut store = Store::new();
+        let e0 = store.create_entity();
+        let e1 = store.create_entity();
+
+        let expected0 = (TestComponent1::new(1), 15u64);
+        let expected1 = (TestComponent2::new(15), TestComponent1::new(2));
+
+        store.add_components(e0, expected0);
+        store.add_components(e1, expected1);
+
+        let actual0 = store
+            .get_components_refs::<(TestComponent1, u64)>(e0)
+            .unwrap();
+        let actual1 = store
+            .get_components_refs::<(TestComponent2, TestComponent1)>(e1)
+            .unwrap();
+
+        assert_eq!(actual0.cloned(), expected0);
+        assert_eq!(actual1.cloned(), expected1);
     }
 
     #[test]
@@ -210,10 +234,7 @@ mod tests {
         let entity = store.create_entity();
         let expected_comp = TestComponent2::new(33);
 
-        store.add_components(
-            entity,
-            (TestComponent1::default(), expected_comp),
-        );
+        store.add_components(entity, (TestComponent1::default(), expected_comp));
         store.remove_components::<TestComponent1>(entity);
 
         let comp2 = store.get_components_refs::<TestComponent2>(entity).unwrap();
