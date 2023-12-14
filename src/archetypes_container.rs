@@ -207,6 +207,11 @@ impl ArchetypesContainer {
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
         for (i, arch) in self.archetypes.iter().enumerate() {
             if arch.is_same_as(&archetype) {
+                match self.free_archetypes.binary_search(&i) {
+                    Ok(i) => { self.free_archetypes.remove(i); },
+                    Err(_) => {}
+                };
+
                 return i;
             }
         }
