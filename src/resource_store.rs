@@ -1,9 +1,9 @@
-use std::ops::{Index, IndexMut};
+use std::{ops::{Index, IndexMut}, mem::ManuallyDrop};
 
 use crate::{entities_container::EntitiesContainer, mem_utils, Entity};
 
 pub struct ResourceStore<T> {
-    elements: *mut T,
+    elements: *mut ManuallyDrop<T>,
     entities_container: EntitiesContainer,
 }
 
@@ -38,7 +38,7 @@ impl<T> ResourceStore<T> {
         }
 
         unsafe {
-            self.elements.add(entity.id as usize).write(resource);
+            self.elements.add(entity.id as usize).write(ManuallyDrop::new(resource));
         }
 
         entity
@@ -47,7 +47,9 @@ impl<T> ResourceStore<T> {
     pub fn release(&mut self, entity: Entity) -> T {
         debug_assert!(self.entities_container.is_alive(entity));
         self.entities_container.destroy_entity(entity);
-        unsafe { self.elements.add(entity.id as usize).read() }
+        unsafe { 
+            ManuallyDrop::take(&mut self.elements.add(entity.id as usize).read())
+        }
     }
 }
 
@@ -84,7 +86,7 @@ impl<T> Drop for ResourceStore<T> {
                 continue;
             }
 
-            unsafe { self.elements.add(i).drop_in_place() };
+            unsafe { ManuallyDrop::drop(&mut self.elements.add(i).read()) };
         }
     }
 }
