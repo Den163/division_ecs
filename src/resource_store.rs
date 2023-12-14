@@ -47,9 +47,7 @@ impl<T> ResourceStore<T> {
     pub fn release(&mut self, entity: Entity) -> T {
         debug_assert!(self.entities_container.is_alive(entity));
         self.entities_container.destroy_entity(entity);
-        unsafe {
-            self.elements.add(entity.id as usize).read()
-        }
+        unsafe { self.elements.add(entity.id as usize).read() }
     }
 }
 
@@ -58,14 +56,24 @@ impl<T> Index<Entity> for ResourceStore<T> {
 
     fn index(&self, entity: Entity) -> &Self::Output {
         debug_assert!(self.entities_container.is_alive(entity));
-        unsafe { &*self.elements.add(entity.id as usize) as &T }
+        unsafe {
+            self.elements
+                .add(entity.id as usize)
+                .as_ref()
+                .unwrap_unchecked()
+        }
     }
 }
 
 impl<T> IndexMut<Entity> for ResourceStore<T> {
     fn index_mut(&mut self, entity: Entity) -> &mut Self::Output {
         debug_assert!(self.entities_container.is_alive(entity));
-        unsafe { &mut *self.elements.add(entity.id as usize) as &mut T }
+        unsafe {
+            self.elements
+                .add(entity.id as usize)
+                .as_mut()
+                .unwrap_unchecked()
+        }
     }
 }
 
