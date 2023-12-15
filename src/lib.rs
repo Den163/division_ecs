@@ -32,7 +32,7 @@ pub use entity::Entity;
 pub use resource_store::ResourceStore;
 pub use store::Store;
 
-pub use component_tuple::ClonedExtension;
+pub use component_tuple::{ClonedExtension, ComponentTuple};
 
 pub use query::access::{ReadWriteAccess, ReadonlyAccess, WriteAccess};
 pub use query::component::{
