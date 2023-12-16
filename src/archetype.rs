@@ -1,18 +1,17 @@
 use std::{
     any::TypeId,
+    fmt::{Debug, Display},
     hash::{Hash, Hasher},
 };
 
-use crate::{
-    component_type::ComponentType, mem_utils,
-    component_tuple::ComponentTuple,
-};
+use crate::{component_tuple::ComponentTuple, component_type::ComponentType, mem_utils};
 
 #[derive(Debug)]
 pub struct Archetype {
     ids: *mut TypeId,
     sizes: *mut usize,
     aligns: *mut usize,
+    names: *mut &'static str,
     component_count: usize,
 }
 
@@ -30,8 +29,14 @@ impl Archetype {
         let component_count = sorted_components.len();
         assert!(component_count > 0);
 
-        let (ids, sizes, aligns): (*mut TypeId, *mut usize, *mut usize) = unsafe {
+        let (ids, sizes, aligns, names): (
+            *mut TypeId,
+            *mut usize,
+            *mut usize,
+            *mut &'static str,
+        ) = unsafe {
             (
+                mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
@@ -43,6 +48,7 @@ impl Archetype {
                 *ids.add(i) = comp.id();
                 *sizes.add(i) = comp.size();
                 *aligns.add(i) = comp.align();
+                *names.add(i) = comp.name();
             };
         }
 
@@ -50,6 +56,7 @@ impl Archetype {
             ids,
             sizes,
             aligns,
+            names,
             component_count,
         }
     }
@@ -62,7 +69,12 @@ impl Archetype {
     #[inline(always)]
     pub fn components_iter<'a>(&'a self) -> impl Iterator<Item = ComponentType> + 'a {
         (0..self.component_count).into_iter().map(|i| unsafe {
-            ComponentType::new(*self.ids.add(i), *self.sizes.add(i), *self.aligns.add(i))
+            ComponentType::new(
+                *self.ids.add(i),
+                *self.sizes.add(i),
+                *self.aligns.add(i),
+                *self.names.add(i),
+            )
         })
     }
 
@@ -229,8 +241,9 @@ impl ArchetypesUnion {
 impl Clone for Archetype {
     fn clone(&self) -> Self {
         let component_count = self.component_count;
-        let (ids, sizes, aligns) = unsafe {
+        let (ids, sizes, aligns, names) = unsafe {
             (
+                mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
                 mem_utils::alloc(component_count),
@@ -241,14 +254,26 @@ impl Clone for Archetype {
             self.ids.copy_to_nonoverlapping(ids, component_count);
             self.sizes.copy_to_nonoverlapping(sizes, component_count);
             self.aligns.copy_to_nonoverlapping(aligns, component_count);
+            self.names.copy_to_nonoverlapping(names, component_count)
         }
 
         Self {
             ids,
             sizes,
             aligns,
+            names,
             component_count,
         }
+    }
+}
+
+impl Display for Archetype {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Archetype")
+            .field("Components:", unsafe {
+                &std::slice::from_raw_parts(self.names, self.component_count)
+            })
+            .finish()
     }
 }
 
@@ -268,6 +293,7 @@ impl Drop for Archetype {
             mem_utils::dealloc(self.ids, self.component_count);
             mem_utils::dealloc(self.sizes, self.component_count);
             mem_utils::dealloc(self.aligns, self.component_count);
+            mem_utils::dealloc(self.names, self.component_count);
         }
     }
 }
