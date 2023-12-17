@@ -66,7 +66,6 @@ impl ArchetypesContainer {
         let arch_index = self.page_to_archetype[page_index];
 
         let page = &mut self.pages[page_index];
-        let page_will_empty = page.entity_count() == 1;
 
         let arch = &self.archetypes[arch_index];
         let layout = &self.layouts[arch_index];
@@ -75,10 +74,6 @@ impl ArchetypesContainer {
             &arch,
             &layout,
         );
-
-        if page_will_empty {
-            self.free_page(page_index);
-        }
 
         swap_remove
     }
@@ -172,21 +167,6 @@ impl ArchetypesContainer {
     pub fn get_archetype_by_page(&self, page_index: usize) -> &Archetype {
         let arch_index = self.page_to_archetype[page_index] as usize;
         &self.archetypes[arch_index]
-    }
-
-    fn free_page(&mut self, page_index: usize) {
-        let archetype_index = self.page_to_archetype[page_index];
-        if archetype_index == 0 {
-            return;
-        }
-        let archetype_index = archetype_index as usize;
-        let arch_pages = &mut self.archetype_to_pages[archetype_index];
-
-        for i in 0..arch_pages.pages.len() {
-            if arch_pages.pages[i] == page_index {
-                arch_pages.pages.remove(i);
-            }
-        }
     }
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
