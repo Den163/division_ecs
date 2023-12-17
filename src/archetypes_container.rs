@@ -14,9 +14,6 @@ pub(crate) struct ArchetypesContainer {
 
     pages: Vec<ArchetypeDataPage>,
     page_to_archetype: Vec<usize>,
-
-    free_archetypes: Vec<usize>,
-    free_pages: Vec<usize>,
 }
 
 #[derive(Debug)]
@@ -42,9 +39,6 @@ impl ArchetypesContainer {
             .map(|_| 0)
             .collect();
 
-        let free_archetypes = Vec::new();
-        let free_pages = (0..Self::ARCHETYPE_PAGE_DEFAULT_CAPACITY).collect();
-
         ArchetypesContainer {
             archetypes,
             layouts,
@@ -52,9 +46,6 @@ impl ArchetypesContainer {
 
             pages,
             page_to_archetype,
-
-            free_archetypes,
-            free_pages,
         }
     }
 
@@ -194,45 +185,24 @@ impl ArchetypesContainer {
         for i in 0..arch_pages.pages.len() {
             if arch_pages.pages[i] == page_index {
                 arch_pages.pages.remove(i);
-                if arch_pages.pages.len() == 0 {
-                    self.free_archetypes.push(archetype_index);
-                }
-                break;
             }
         }
-
-        self.free_pages.push(page_index);
     }
 
     fn reserve_archetype(&mut self, archetype: &Archetype) -> usize {
         for (i, arch) in self.archetypes.iter().enumerate() {
             if arch.is_same_as(&archetype) {
-                match self.free_archetypes.binary_search(&i) {
-                    Ok(i) => { self.free_archetypes.remove(i); },
-                    Err(_) => {}
-                };
-
                 return i;
             }
         }
 
         let layout = ArchetypeLayout::new(archetype);
-        match self.free_archetypes.pop() {
-            Some(free_idx) => {
-                self.archetypes[free_idx] = archetype.clone();
-                self.layouts[free_idx] = layout;
+        self.archetypes.push(archetype.clone());
+        self.layouts.push(layout);
+        self.archetype_to_pages
+            .push(ArchetypePages { pages: Vec::new() });
 
-                free_idx
-            }
-            None => {
-                self.archetypes.push(archetype.clone());
-                self.layouts.push(layout);
-                self.archetype_to_pages
-                    .push(ArchetypePages { pages: Vec::new() });
-
-                self.archetypes.len() - 1
-            }
-        }
+        self.archetypes.len() - 1
     }
 
     fn reserve_page(
@@ -258,15 +228,9 @@ impl ArchetypesContainer {
             }
         }
 
-        let page_index = match self.free_pages.pop() {
-            Some(page_index) => page_index,
-            None => {
-                let page_index = self.pages.len();
-                self.pages.insert(page_index, ArchetypeDataPage::new());
-                self.page_to_archetype.insert(page_index, archetype_index);
-                page_index
-            }
-        };
+        let page_index = self.pages.len();
+        self.pages.insert(page_index, ArchetypeDataPage::new());
+        self.page_to_archetype.insert(page_index, archetype_index);
 
         let layout = &self.layouts[archetype_index];
         self.pages[page_index].set_layout(layout);
